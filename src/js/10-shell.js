@@ -187,6 +187,16 @@ document.addEventListener('keydown',function(e){
   else if(e.key==='Escape'&&A.mode().onEscape)A.mode().onEscape();
 });
 
+/* ---------- 映像の枠合わせ ---------- */
+if(window.ResizeObserver){
+  var ro=new ResizeObserver(function(){A.fitPanels();});
+  ro.observe($('#stage'));
+}
+window.addEventListener('resize',function(){A.fitPanels();});
+A.on('loaded',function(){A.fitPanels();});
+A.on('tab',function(){setTimeout(A.fitPanels,0);});
+A.on('mode',function(){setTimeout(A.fitPanels,0);});
+
 /* ---------- 拡大 ---------- */
 Object.keys(A.players).forEach(function(k){A.attachZoomGesture(A.P(k));});
 function zoomStep(f){

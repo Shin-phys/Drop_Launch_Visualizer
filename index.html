@@ -121,7 +121,7 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 .stage.over .panel.dim .chip,.stage.over .panel.dim .fnum{visibility:hidden}
 @media(max-width:760px){.stage.side{grid-template-columns:1fr 1fr}}
 .panel{position:relative;background:#000;border:2px solid #20262f;border-radius:12px;overflow:hidden}
-.panel.off{display:none}
+.panel.off{display:none!important}   /* body.compact .panel より弱くならないように */
 .panel.active{border-color:var(--acc)}
 .vp{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;touch-action:none}
 .vp.crosshair{cursor:crosshair}
@@ -185,6 +185,7 @@ body.compact .zoomctl{display:none}
 .transport{background:#131924;border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
 .seekrow{display:flex;gap:10px;align-items:center;margin-top:8px}
 .tv{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:.94rem}
+#btnHead{white-space:nowrap;flex:0 0 auto}
 .jog{height:50px;border-radius:11px;border:1px solid var(--line);margin-top:8px;
   background:repeating-linear-gradient(90deg,#2b3444 0 2px,transparent 2px 14px);
   display:flex;align-items:center;justify-content:center;color:var(--mut);
@@ -205,6 +206,11 @@ body.compact .zoomctl{display:none}
 .num.done{background:var(--ok);color:#04150b}
 .slider{display:grid;grid-template-columns:64px 1fr 74px;gap:8px;align-items:center;margin:6px 0}
 .slider .v{font-size:.84rem;color:var(--mut);text-align:right;font-variant-numeric:tabular-nums}
+/* スライダーだけでは細かく決められないときのための数値入力 */
+.numin{font:inherit;background:#242b38;color:var(--fg);border:1px solid var(--line);
+  border-radius:9px;padding:4px 6px;width:100%;min-height:40px;text-align:right;
+  font-size:.9rem;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.numin::-webkit-outer-spin-button,.numin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .slider span:first-child{font-size:.88rem}
 .big{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
 table.tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:.9rem}
@@ -270,20 +276,28 @@ body.compact #secLoad.collapsed{flex:0 0 auto;overflow:visible;padding:8px 10px;
 body.compact #secStage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
   margin:0;border:0;border-radius:0;padding:8px}
 /* 映像の高さは画面の36%を確保する（ここが痩せると観察にならない） */
-body.compact .stage{flex:1 1 auto;min-height:34dvh;max-height:46dvh;gap:5px;padding:0}
-body.compact .stage.side{grid-template-rows:1fr}
+/* 高さは中身に左右されない固定値にする。中身（映像の枠）の大きさを
+   高さから計算しているので、逆方向の依存があると堂々巡りになる。 */
+body.compact .stage{flex:0 0 auto;height:36dvh;min-height:140px;gap:5px;padding:0}
+/* 行の高さを 1fr にしておかないと、パネルの高さが中身（映像の枠）で決まり、
+   その映像の枠をパネルの高さから計算しているので堂々巡りになる。 */
+body.compact .stage.one,body.compact .stage.over,body.compact .stage.side{grid-template-rows:1fr}
 body.compact .stage.stack{grid-template-rows:1fr 1fr}
-body.compact .panel{min-height:0}
-body.compact .vp{position:absolute;inset:0;width:auto;height:auto;aspect-ratio:auto!important}
+/* 映像は常に「余白なしで .vp にぴったり」入れる。
+   .vp が映像と別の縦横比だと左右に黒帯ができ、「画面幅」の意味がレイアウトごとに
+   変わってしまう（追いかけカメラの速度が、並べた途端に変わる原因になる）。 */
+body.compact .panel{min-height:0;display:flex;align-items:center;justify-content:center}
+body.compact .vp{position:relative;inset:auto;aspect-ratio:auto}
 body.compact .transport{flex:0 0 auto;margin-top:6px;padding:7px}
 body.compact .transport .row{gap:6px}
-body.compact #btnHead,
 body.compact .transport .btn[data-step="-10"],
 body.compact .transport .btn[data-step="10"]{display:none}
 body.compact #btnPlay{flex:1}
 /* ジョグ帯は出さない。映像の上を横になぞれば同じことができる */
 body.compact .jog{display:none}
 body.compact #seekLab{display:none}
+body.compact .tv{font-size:.8rem}
+body.compact #btnHead{padding:4px 8px;font-size:.82rem}
 body.compact .seekrow{margin-top:6px}
 body.compact .transport .row{flex-wrap:nowrap}
 body.compact #btnPlay{flex:1;min-width:0}
@@ -464,7 +478,6 @@ body.compact .subcard{padding:10px}
   <div class="transport">
     <div class="row">
       <button class="btn primary" id="btnPlay">▶ 再生</button>
-      <button class="btn" id="btnHead">⏮ 先頭</button>
       <button class="btn" data-step="-10">⏪ −10</button>
       <button class="btn" data-step="-1">◀ −1</button>
       <button class="btn" data-step="1">＋1 ▶</button>
@@ -482,6 +495,7 @@ body.compact .subcard{padding:10px}
       </span>
     </div>
     <div class="seekrow">
+      <button class="btn sm" id="btnHead">⏮ 先頭</button>
       <span class="mut small" id="seekLab">位置</span>
       <input type="range" id="seek" min="0" max="1" step="0.001" value="0">
       <span class="tv" id="tRead">0</span>
@@ -520,74 +534,84 @@ body.compact .subcard{padding:10px}
 </div>
 
 <div class="tabpane hidden" data-pane="observe:h">
-  <p style="margin-top:0"><b>ボールが真上に上がって、真下に落ちるように見える</b>ようにカメラを動かせますか。
-    まずは速さをいろいろ変えて探してみてください。</p>
+  <p style="margin-top:0">ボールが<b>真上に上がって真下に落ちる</b>ように見えますか。カメラの速さを探してみましょう。</p>
 
   <div class="subcard">
-    <h3>1. カメラでボールを追いかける</h3>
+    <h3>1. 帯を置く</h3>
     <div class="row">
       <button class="btn warn" id="obCam">カメラを動かす</button>
-      <button class="btn sm" id="obCamAuto" disabled>測った値に合わせる</button>
+      <button class="btn sm" id="obCamPick">ボールをタップ</button>
     </div>
-    <div class="slider" style="margin-top:8px"><span>カメラの速さ</span>
-      <input type="range" id="obCamV" min="-1.5" max="1.5" step="0.005" value="0">
-      <span class="v"><b id="obCamVv">0.00</b></span></div>
-    <p class="mut small" style="margin:0">単位は「画面幅／秒」。ひとつの速さで最後までボールが青い線に乗れば、水平方向は等速です。</p>
     <div id="obBandRow" class="hidden">
-      <h3 style="margin-top:12px">基準の帯</h3>
       <div class="slider"><span>位置</span><input type="range" id="obCamX" min="0" max="1" step="0.005" value="0.5"><span class="v"><b id="obCamXv">50%</b></span></div>
-      <div class="row" style="margin:0 0 6px">
-        <button class="btn sm" id="obCamPick">ボールをタップして合わせる</button>
-        <span class="mut small">帯は直接ドラッグでも動かせます</span>
-      </div>
-      <div class="slider"><span>幅</span><input type="range" id="obMaskW" min="0.03" max="0.5" step="0.01" value="0.12"><span class="v"><b id="obMaskWv">12%</b></span></div>
-      <div class="slider"><span>線の濃さ</span><input type="range" id="obLineOp" min="0" max="1" step="0.05" value="1"><span class="v"><b id="obLineOpv">100%</b></span></div>
-      <div class="slider"><span>帯の色</span><input type="range" id="obBandOp" min="0" max="0.6" step="0.02" value="0"><span class="v"><b id="obBandOpv">0%</b></span></div>
-      <div class="row" style="margin-top:8px">
-        <button class="btn sm" id="obMask">背景を隠す</button>
-        <button class="btn sm" id="obSbs">もとの映像と並べる</button>
-      </div>
-      <div id="obMaskRow" class="hidden">
-        <div class="slider"><span>外の濃さ</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.55"><span class="v"><b id="obMaskOpv">55%</b></span></div>
-        <p class="mut small" style="margin:0">速さを探すときは薄く（外れた向きが見えます）、決まったら濃くすると鉛直の運動だけが残ります。</p>
-      </div>
+      <div class="slider"><span>幅</span><input type="range" id="obMaskW" min="0.02" max="0.5" step="0.01" value="0.06"><span class="v"><b id="obMaskWv">6%</b></span></div>
+      <p class="mut small" style="margin:0">幅はボールの大きさくらいに。帯はドラッグでも動きます。</p>
     </div>
-    <p class="mut small" style="margin:8px 0 0" id="obCamMsg"></p>
   </div>
 
   <div class="subcard">
-    <h3>2. その速さを数字にする</h3>
+    <h3>2. 速さを探す</h3>
+    <div class="slider"><span>速さ</span>
+      <input type="range" id="obCamV" min="-1.5" max="1.5" step="0.005" value="0">
+      <input type="number" id="obCamVnum" class="numin" step="0.005" value="0.000"></div>
+    <div class="grid4">
+      <button class="btn sm" data-camv="-0.05">−0.05</button>
+      <button class="btn sm" data-camv="-0.005">−0.005</button>
+      <button class="btn sm" data-camv="0.005">＋0.005</button>
+      <button class="btn sm" data-camv="0.05">＋0.05</button>
+    </div>
+    <p class="mut small" style="margin:8px 0 0">再生 → 一時停止 → <b>⏮ 先頭</b> でやり直し。数値は直接入力できます。</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn sm" id="obMask">背景を隠す</button>
+      <button class="btn sm" id="obSbs">もとの映像と並べる</button>
+      <button class="btn sm" id="obCamAuto" disabled>測った値に合わせる</button>
+    </div>
+    <div id="obMaskRow" class="hidden">
+      <div class="slider"><span>外の濃さ</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.75"><span class="v"><b id="obMaskOpv">75%</b></span></div>
+      <div class="slider"><span>線の濃さ</span><input type="range" id="obLineOp" min="0" max="1" step="0.05" value="0.5"><span class="v"><b id="obLineOpv">50%</b></span></div>
+      <div class="slider"><span>帯の色</span><input type="range" id="obBandOp" min="0" max="0.6" step="0.02" value="0"><span class="v"><b id="obBandOpv">0%</b></span></div>
+      <p class="mut small" style="margin:0">合ってきたら外を濃くして、もう一度。</p>
+    </div>
+  </div>
+
+  <div class="subcard">
+    <h3>3. 速さを数字にする</h3>
     <div class="row"><span class="small">Δt ＝</span><select id="obDtSel"></select>
       <span class="big" id="obDtRead">—</span></div>
-    <p class="mut small" style="margin:6px 0 10px">
+    <details><summary>なぜ Δt で測るのか</summary><div class="db">
       「1コマ」は端末によって 1/30 秒だったり 1/240 秒だったりします。そこで観察の単位には
-      <b>Δt ＝ 何コマ分</b>という時間を使い、コマ数と秒の両方を表示します。
-      <b>等速かどうかの判定は fps に関係しません</b>。fps が効くのは「Δt が何秒か」を数値で言うときだけです。</p>
+      <b>Δt ＝ 何コマ分</b>という時間を使い、コマ数と秒の両方を表示しています。
+      等速かどうかの判定は fps に関係しません。fps が効くのは「Δt が何秒か」を数値で言うときだけです。
+    </div></details>
     <div class="stepline"><span class="num" id="obM1">1</span>
-      <button class="btn" id="obMeas1">① いまのボールの位置をクリック</button>
+      <button class="btn" id="obMeas1">① ボールをタップ</button>
       <span class="mut small" id="obMeas1v">—</span></div>
     <div class="stepline"><span class="num" id="obM2">2</span>
-      <button class="btn" id="obMeas2" disabled>② Δt 後のボールの位置をクリック</button>
+      <button class="btn" id="obMeas2" disabled>② Δt 後のボールをタップ</button>
       <span class="mut small" id="obMeas2v">—</span></div>
     <div class="row"><button class="btn sm" id="obMeasReset">はかり直す</button>
-      <span class="mut small">拡大しておくと選びやすくなります</span></div>
+      <span class="mut small">測るあいだカメラは止まります。拡大すると選びやすくなります。</span></div>
     <div class="note good small hidden" id="obMeasOut" style="margin-top:10px"></div>
     <div class="note small hidden" id="obCompare" style="margin-top:8px"></div>
   </div>
 
   <div class="subcard">
-    <h3>3. 確かめる</h3>
+    <h3>4. Δt ずつ進めて確かめる</h3>
     <div class="row">
-      <button class="btn warn" id="obGrid" disabled>この間隔で縦線を引く</button>
-      <button class="btn" id="obPred" disabled>予想の位置を出す</button>
+      <button class="btn warn" id="obGrid" disabled>縦線を出す</button>
+      <button class="btn sm" id="obPred" disabled>予想を出す</button>
     </div>
-    <p class="mut small" style="margin:8px 0 0">水平方向が等速なら、再生すると <b>Δt ごとにちょうど1本ずつ</b>線を通過するはずです。ずれたら等速ではありません。</p>
+    <div class="grid2" style="margin-top:8px">
+      <button class="btn" id="obDtPrev">◀ Δt もどる</button>
+      <button class="btn" id="obDtNext">Δt すすむ ▶</button>
+    </div>
+    <p class="mut small" style="margin:8px 0 0">Δt ごとに、線を1本ずつ通りますか。</p>
   </div>
 </div>
 
 <div class="tabpane hidden" data-pane="observe:v">
   <p style="margin-top:0">最高点を <b>t = 0</b> として、<b>下り（+t）</b>と<b>上りの逆再生（−t）</b>を同時に流します。
-    上りと下りがそっくり同じなら、鉛直方向の運動は最高点をはさんで<b>時間を反転しても同じ</b>ということです。</p>
+    ふたつは同じに見えますか。</p>
   <div class="row"><span class="small">並べ方</span>
     <div class="seg sm" id="obMirSeg">
       <button data-m="side" class="on">左右に並べる</button><button data-m="over">重ねる</button>
@@ -607,7 +631,7 @@ body.compact .subcard{padding:10px}
     <div class="row"><button class="btn" id="obHG">高さの線を出す</button>
       <span class="mut small">線をドラッグして、上りと下りで同じ高さに同時に来るか見ます</span></div>
   </div>
-  <div class="note small" style="margin-top:10px">ぴったり重なったら、こう言えます ─ <b>上りは、下りを逆再生したものと同じ</b>。つまり最高点から先の運動は、最高点で静かに手をはなしたのと同じことになります。</div>
+  <p class="mut small" style="margin-bottom:0">重なりましたか。重なったとしたら、上りと下りについて何が言えるでしょう。</p>
 </div>
 
 <div class="tabpane hidden" data-pane="observe:sum">
@@ -1111,6 +1135,24 @@ A.attachZoomGesture=function(p){
   });
 };
 
+/* ---------- 映像の枠を、映像と同じ縦横比にぴったり合わせる ----------
+   .vp に黒帯があると「画面幅」の意味がレイアウトごとに変わり、
+   追いかけカメラの速度が並べた途端に変わってしまう。CSS だけだと
+   端末差が出るので、パネルの実寸から毎回計算して入れる。 */
+A.fitPanels=function(){
+  var compact=document.body.classList.contains('compact');
+  Object.keys(A.players).forEach(function(k){
+    var p=A.players[k], panel=p.vp.parentElement;
+    if(!compact||!p.ready||!p.ar){p.vp.style.width='';p.vp.style.height='';return;}
+    var W=panel.clientWidth, H=panel.clientHeight;
+    if(!W||!H)return;
+    var w=W, h=W/p.ar;
+    if(h>H){h=H;w=H*p.ar;}
+    p.vp.style.width=Math.round(w)+'px';
+    p.vp.style.height=Math.round(h)+'px';
+  });
+};
+
 /* ---------- オーバーレイ（線・点） ---------- */
 A.ov = {
   clear:function(p){p.ovl.innerHTML='';},
@@ -1326,6 +1368,16 @@ document.addEventListener('keydown',function(e){
   else if(e.key==='Escape'&&A.mode().onEscape)A.mode().onEscape();
 });
 
+/* ---------- 映像の枠合わせ ---------- */
+if(window.ResizeObserver){
+  var ro=new ResizeObserver(function(){A.fitPanels();});
+  ro.observe($('#stage'));
+}
+window.addEventListener('resize',function(){A.fitPanels();});
+A.on('loaded',function(){A.fitPanels();});
+A.on('tab',function(){setTimeout(A.fitPanels,0);});
+A.on('mode',function(){setTimeout(A.fitPanels,0);});
+
 /* ---------- 拡大 ---------- */
 Object.keys(A.players).forEach(function(k){A.attachZoomGesture(A.P(k));});
 function zoomStep(f){
@@ -1470,7 +1522,7 @@ var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
 var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,
   x1:null,y1:null,x2:null,y2:null,sMark:0,arm:0,
   showGrid:false,showPred:false,camOn:false,vx:0,vxAuto:0,vxManual:null,
-  maskOn:false,maskW:0.12,maskOp:0.55,bandOp:0,lineOp:1,sbs:false,camX:0.5,
+  maskOn:false,maskW:0.06,maskOp:0.75,bandOp:0,lineOp:0.5,sbs:false,camX:0.5,measuring:false,
   mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4};
 A.O=O;
 var P1=function(){return A.P('O1');}, P2=function(){return A.P('O2');};
@@ -1527,7 +1579,6 @@ $('#obRangeReset').addEventListener('click',function(){O.fStart=O.fApex=O.fEnd=n
 /* ---------- 位置をはかる ---------- */
 function resetMeasure(){
   O.x1=O.y1=O.x2=O.y2=null;O.arm=0;O.showGrid=false;O.showPred=false;O.vxAuto=0;O.vxManual=null;
-  O.camX=0.5;$('#obCamX').value='0.5';$('#obCamXv').textContent='50%';
   $('#obMeas1v').textContent='—';$('#obMeas2v').textContent='—';
   $('#obM1').classList.remove('done');$('#obM2').classList.remove('done');
   $('#obMeas2').disabled=true;
@@ -1543,9 +1594,16 @@ function armUI(){A.ov.arm(O.arm>0);
   $('#obApexPick').classList.toggle('warn',O.arm===3);
   $('#obCamPick').classList.toggle('warn',O.arm===4);
 }
-$('#obMeasReset').addEventListener('click',resetMeasure);
-$('#obMeas1').addEventListener('click',function(){O.arm=1;armUI();});
-$('#obMeas2').addEventListener('click',function(){O.arm=2;armUI();});
+function setMeasuring(on){
+  O.measuring=on;
+  var hb=$('#hintbar');
+  if(hb){hb.textContent='測るあいだ、カメラは止めています';A.show('#hintbar',on);}
+  paint();
+}
+A.observeSetMeasuring=setMeasuring;
+$('#obMeasReset').addEventListener('click',function(){setMeasuring(false);resetMeasure();});
+$('#obMeas1').addEventListener('click',function(){O.arm=1;setMeasuring(true);armUI();});
+$('#obMeas2').addEventListener('click',function(){O.arm=2;setMeasuring(true);armUI();});
 $('#obApexPick').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;O.arm=3;armUI();});
 
 /* 押した位置と離した位置がほぼ同じ（＝タップ）のときだけ点を取る。
@@ -1578,6 +1636,7 @@ function pick(pid){
       O.x2=x;O.y2=y;O.arm=0;armUI();
       $('#obMeas2v').textContent='② 横 '+(x*100).toFixed(1)+'%';
       $('#obM2').classList.add('done');
+      setMeasuring(false);
       finishMeasure();
     }else if(O.arm===3){
       O.apexX=x;O.arm=0;armUI();
@@ -1604,13 +1663,13 @@ function finishMeasure(){
   $('#obMeasOut').classList.remove('hidden');
   $('#obMeasOut').innerHTML='Δt ＝ <b>'+O.dtF+' コマ ＝ '+f3(dtSec())+' 秒</b> のあいだに、'+
     'ボールは横に <b>画面幅の '+(Math.abs(d)*100).toFixed(1)+'%</b> 進みました。<br>'+
-    'つまり水平方向の速さは <b>'+Math.abs(O.vxAuto).toFixed(2)+' 画面幅/秒</b>。'+
-    'この速さがずっと変わらないなら、水平方向は等速直線運動です。';
+    'このあいだの水平方向の速さは <b>'+Math.abs(O.vxAuto).toFixed(3)+' 画面幅/秒</b>。';
   ['#obGrid','#obPred'].forEach(function(x){$(x).disabled=false;});
   $('#obCamAuto').disabled=false;
   var cv=$('#obCamV'), lim=Math.max(0.5,Math.abs(O.vxAuto)*2.5);
-  cv.min=String(-lim); cv.max=String(lim); cv.value=String(O.vx);
-  $('#obCamVv').textContent=O.vx.toFixed(2);
+  cv.min=String(-lim); cv.max=String(lim);
+  $('#obCamVnum').min=cv.min; $('#obCamVnum').max=cv.max;
+  setVx(O.vx);
   showCompare();
 }
 /* 自分で合わせた速さと、測って出した速さを並べる（測定が答え合わせになる） */
@@ -1619,10 +1678,9 @@ function showCompare(){
   if(man==null||Math.abs(man)<0.01){$('#obCompare').classList.add('hidden');return;}
   var diff=Math.abs(man-O.vxAuto)/Math.abs(O.vxAuto)*100;
   $('#obCompare').classList.remove('hidden');
-  $('#obCompare').innerHTML='自分で合わせた速さ <b>'+Math.abs(man).toFixed(2)+'</b> ／ '+
-    '測って出した速さ <b>'+Math.abs(O.vxAuto).toFixed(2)+'</b> 画面幅/秒　'+
-    '（ちがい <b>'+diff.toFixed(0)+'%</b>）'+
-    (diff<10?'　目で合わせた速さは、測った値とほぼ同じでした。':'');
+  $('#obCompare').innerHTML='自分で合わせた速さ <b>'+Math.abs(man).toFixed(3)+'</b> ／ '+
+    '測って出した速さ <b>'+Math.abs(O.vxAuto).toFixed(3)+'</b> 画面幅/秒　'+
+    '（ちがい <b>'+diff.toFixed(0)+'%</b>）';
 }
 $('#obGrid').addEventListener('click',function(){
   O.showGrid=!O.showGrid; if(O.showGrid)O.camOn=false; syncHButtons(); paint();
@@ -1631,8 +1689,6 @@ $('#obPred').addEventListener('click',function(){O.showPred=!O.showPred;syncHBut
 $('#obCam').addEventListener('click',function(){
   O.camOn=!O.camOn; if(O.camOn)O.showGrid=false;
   if(O.camOn&&O.x1==null)O.sMark=A.S.s;   /* 測定前は、いま見ているコマを基準にする */
-  $('#obCamMsg').textContent=O.camOn
-    ?'ボールが青い線の上を、まっすぐ上下するように速さを合わせてください。ひとつの速さで最後まで線に乗れば、水平方向は等速です。':'';
   syncHButtons(); A.syncPanels(); setStage();
 });
 function setCamX(x,fromSlider){
@@ -1644,6 +1700,13 @@ function setCamX(x,fromSlider){
 A.observeSetCamX=setCamX;
 $('#obCamX').addEventListener('input',function(){setCamX(parseFloat(this.value),true);});
 $('#obCamPick').addEventListener('click',function(){O.arm=4;armUI();});
+/* Δt ずつ進める。ふつうに再生しただけでは Δt ごとの位置は追えないので。 */
+function stepDt(n){
+  A.setPlaying(false);
+  A.S.s=clamp(A.S.s+n*dtSec(),0,mode.sMax());
+}
+A.attachRepeat($('#obDtNext'),function(){stepDt(1);});
+A.attachRepeat($('#obDtPrev'),function(){stepDt(-1);});
 $('#obLineOp').addEventListener('input',function(){
   O.lineOp=parseFloat(this.value);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';place();
 });
@@ -1664,9 +1727,9 @@ $('#obSbs').addEventListener('click',function(){
 });
 function syncHButtons(){
   $('#obGrid').classList.toggle('ok',O.showGrid);
-  $('#obGrid').textContent=O.showGrid?'縦線を消す':'この間隔で縦線を引く';
+  $('#obGrid').textContent=O.showGrid?'縦線を消す':'縦線を出す';
   $('#obPred').classList.toggle('ok',O.showPred);
-  $('#obPred').textContent=O.showPred?'予想の位置を消す':'予想の位置を出す';
+  $('#obPred').textContent=O.showPred?'予想を消す':'予想を出す';
   $('#obCam').classList.toggle('ok',O.camOn);
   $('#obCam').textContent=O.camOn?'カメラを止める':'カメラを動かす';
   $('#obMask').classList.toggle('ok',O.maskOn);
@@ -1676,14 +1739,27 @@ function syncHButtons(){
   A.show('#obBandRow',O.camOn);
   if(!O.camOn)A.show('#obMaskRow',false);
 }
-$('#obCamV').addEventListener('input',function(){
-  O.vx=parseFloat(this.value);$('#obCamVv').textContent=O.vx.toFixed(2);
+/* 速さの指定は3通り（スライダー・数値・ボタン）。どれで変えても表示をそろえる。
+   スライダーだけだと、スマホの幅では 0.02 きざみ程度にしかならないため。 */
+function setVx(v,from){
+  if(!isFinite(v))return;
+  var cv=$('#obCamV'), lim=parseFloat(cv.max);
+  O.vx=clamp(Math.round(v*1000)/1000,-lim,lim);
+  if(from!=='slider')cv.value=String(O.vx);
+  if(from!=='num')$('#obCamVnum').value=O.vx.toFixed(3);
   if(O.vxAuto)showCompare();
+  place();
+}
+A.observeSetVx=setVx;
+$('#obCamV').addEventListener('input',function(){setVx(parseFloat(this.value),'slider');});
+$('#obCamVnum').addEventListener('input',function(){setVx(parseFloat(this.value),'num');});
+$('#obCamVnum').addEventListener('change',function(){setVx(parseFloat(this.value));});
+$$('[data-camv]').forEach(function(b){
+  A.attachRepeat(b,function(){setVx(O.vx+parseFloat(b.getAttribute('data-camv')));});
 });
 $('#obCamAuto').addEventListener('click',function(){
   if(O.vxManual===null)O.vxManual=O.vx;
-  O.vx=O.vxAuto;$('#obCamV').value=String(O.vx);$('#obCamVv').textContent=O.vx.toFixed(2);
-  showCompare();
+  setVx(O.vxAuto);
 });
 
 /* ---------- ミラー再生 ---------- */
@@ -1744,7 +1820,7 @@ function paint(){
       /* 帯そのもの（半透明の青）。濃さ 0 なら線だけになる */
       A.ov.el(p1,'band');
       /* 背景を隠す縦帯。動く背景が視界から外れると、ボールの動きが鉛直だけに見える */
-      if(O.maskOn){A.ov.el(p1,'mask ml');A.ov.el(p1,'mask mr');}
+      if(O.maskOn&&!O.measuring){A.ov.el(p1,'mask ml');A.ov.el(p1,'mask mr');}
     }
     if(!O.camOn&&O.x1!=null){var d1=A.ov.el(p1,'dot d1');d1.style.left=(O.x1*100)+'%';d1.style.top=(O.y1*100)+'%';}
     if(!O.camOn&&O.x2!=null){var d2=A.ov.el(p1,'dot d2');d2.style.left=(O.x2*100)+'%';d2.style.top=(O.y2*100)+'%';}
@@ -1766,16 +1842,17 @@ function paint(){
   }
   place();
 }
+function camActive(){return A.S.tab==='h'&&O.camOn&&!O.measuring;}
 function place(){
   /* カメラのパンとミラーの反転 */
-  var cam=(A.S.tab==='h'&&O.camOn);
+  var cam=camActive();
   A.applyTransform(P1(),cam?(-(O.vx*(A.S.s-O.sMark))*100):0);
   A.applyTransform(P2(),0,(A.S.tab==='v'&&O.flip)?O.apexX:null);
   /* カメラが動いていることを画面に明示する（背景を隠すときこそ必要） */
   var badge=document.querySelector('[data-cam="O1"]');
   if(badge){
     badge.classList.toggle('hidden',!cam);
-    if(cam)badge.textContent=(O.vx>=0?'カメラ →':'← カメラ')+' '+Math.abs(O.vx).toFixed(2)+' 画面幅/秒';
+    if(cam)badge.textContent=(O.vx>=0?'カメラ →':'← カメラ')+' '+Math.abs(O.vx).toFixed(3)+' 画面幅/秒';
   }
   var c=O.camX, w=O.maskW;
   var cline=P1().ovl.querySelector('.cam');
@@ -1833,6 +1910,7 @@ A.observeLoadJson=function(d){
   $('#obMaskOp').value=String(O.maskOp);$('#obMaskOpv').textContent=Math.round(O.maskOp*100)+'%';
   $('#obBandOp').value=String(O.bandOp);$('#obBandOpv').textContent=Math.round(O.bandOp*100)+'%';
   $('#obLineOp').value=String(O.lineOp);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';
+  $('#obCamV').value=String(O.vx);$('#obCamVnum').value=O.vx.toFixed(3);
   fillDt(); refreshRange();
   if(O.x1!=null&&O.x2!=null){
     $('#obM1').classList.add('done');$('#obM2').classList.add('done');
@@ -1872,7 +1950,7 @@ var mode={
     return true;
   },
   onTab:function(id){
-    A.setPlaying(false); A.S.s=0; O.arm=0; armUI();
+    A.setPlaying(false); A.S.s=0; O.arm=0; O.measuring=false; A.show('#hintbar',false); armUI();
     if(id==='h'&&!O.dtTouched&&ready3()){
       var nd=suggestDt(); if(nd!==O.dtF){O.dtF=nd;fillDt();resetMeasure();}
     }
@@ -1902,7 +1980,7 @@ var mode={
     var n=Math.round(A.S.s*A.S.fps);
     if(A.S.tab==='range')return {label:'位置',text:A.TF(A.S.s)+' コマ / '+f3(A.S.s)+' s'};
     if(A.S.tab==='v')return {label:'最高点から',text:'±'+f3(A.S.s)+' s（'+n+' コマ）'};
-    return {label:'開始から',text:'+'+f3(A.S.s)+' s（'+n+' コマ ＝ Δt×'+(A.S.s/dtSec()).toFixed(2)+'）'};
+    return {label:'開始から',text:'+'+f3(A.S.s)+' s ／ Δt×'+(A.S.s/dtSec()).toFixed(2)};
   },
   onFrame:place,
   enter:function(){fillDt();refreshRange();syncHButtons();},

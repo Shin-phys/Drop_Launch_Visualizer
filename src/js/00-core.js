@@ -327,6 +327,24 @@ A.attachZoomGesture=function(p){
   });
 };
 
+/* ---------- 映像の枠を、映像と同じ縦横比にぴったり合わせる ----------
+   .vp に黒帯があると「画面幅」の意味がレイアウトごとに変わり、
+   追いかけカメラの速度が並べた途端に変わってしまう。CSS だけだと
+   端末差が出るので、パネルの実寸から毎回計算して入れる。 */
+A.fitPanels=function(){
+  var compact=document.body.classList.contains('compact');
+  Object.keys(A.players).forEach(function(k){
+    var p=A.players[k], panel=p.vp.parentElement;
+    if(!compact||!p.ready||!p.ar){p.vp.style.width='';p.vp.style.height='';return;}
+    var W=panel.clientWidth, H=panel.clientHeight;
+    if(!W||!H)return;
+    var w=W, h=W/p.ar;
+    if(h>H){h=H;w=H*p.ar;}
+    p.vp.style.width=Math.round(w)+'px';
+    p.vp.style.height=Math.round(h)+'px';
+  });
+};
+
 /* ---------- オーバーレイ（線・点） ---------- */
 A.ov = {
   clear:function(p){p.ovl.innerHTML='';},

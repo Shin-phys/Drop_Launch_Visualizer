@@ -112,7 +112,7 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 .stage.over .panel.dim .chip,.stage.over .panel.dim .fnum{visibility:hidden}
 @media(max-width:760px){.stage.side{grid-template-columns:1fr 1fr}}
 .panel{position:relative;background:#000;border:2px solid #20262f;border-radius:12px;overflow:hidden}
-.panel.off{display:none}
+.panel.off{display:none!important}   /* body.compact .panel より弱くならないように */
 .panel.active{border-color:var(--acc)}
 .vp{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;touch-action:none}
 .vp.crosshair{cursor:crosshair}
@@ -176,6 +176,7 @@ body.compact .zoomctl{display:none}
 .transport{background:#131924;border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
 .seekrow{display:flex;gap:10px;align-items:center;margin-top:8px}
 .tv{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:.94rem}
+#btnHead{white-space:nowrap;flex:0 0 auto}
 .jog{height:50px;border-radius:11px;border:1px solid var(--line);margin-top:8px;
   background:repeating-linear-gradient(90deg,#2b3444 0 2px,transparent 2px 14px);
   display:flex;align-items:center;justify-content:center;color:var(--mut);
@@ -196,6 +197,11 @@ body.compact .zoomctl{display:none}
 .num.done{background:var(--ok);color:#04150b}
 .slider{display:grid;grid-template-columns:64px 1fr 74px;gap:8px;align-items:center;margin:6px 0}
 .slider .v{font-size:.84rem;color:var(--mut);text-align:right;font-variant-numeric:tabular-nums}
+/* スライダーだけでは細かく決められないときのための数値入力 */
+.numin{font:inherit;background:#242b38;color:var(--fg);border:1px solid var(--line);
+  border-radius:9px;padding:4px 6px;width:100%;min-height:40px;text-align:right;
+  font-size:.9rem;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.numin::-webkit-outer-spin-button,.numin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .slider span:first-child{font-size:.88rem}
 .big{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
 table.tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:.9rem}
@@ -261,20 +267,28 @@ body.compact #secLoad.collapsed{flex:0 0 auto;overflow:visible;padding:8px 10px;
 body.compact #secStage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
   margin:0;border:0;border-radius:0;padding:8px}
 /* 映像の高さは画面の36%を確保する（ここが痩せると観察にならない） */
-body.compact .stage{flex:1 1 auto;min-height:34dvh;max-height:46dvh;gap:5px;padding:0}
-body.compact .stage.side{grid-template-rows:1fr}
+/* 高さは中身に左右されない固定値にする。中身（映像の枠）の大きさを
+   高さから計算しているので、逆方向の依存があると堂々巡りになる。 */
+body.compact .stage{flex:0 0 auto;height:36dvh;min-height:140px;gap:5px;padding:0}
+/* 行の高さを 1fr にしておかないと、パネルの高さが中身（映像の枠）で決まり、
+   その映像の枠をパネルの高さから計算しているので堂々巡りになる。 */
+body.compact .stage.one,body.compact .stage.over,body.compact .stage.side{grid-template-rows:1fr}
 body.compact .stage.stack{grid-template-rows:1fr 1fr}
-body.compact .panel{min-height:0}
-body.compact .vp{position:absolute;inset:0;width:auto;height:auto;aspect-ratio:auto!important}
+/* 映像は常に「余白なしで .vp にぴったり」入れる。
+   .vp が映像と別の縦横比だと左右に黒帯ができ、「画面幅」の意味がレイアウトごとに
+   変わってしまう（追いかけカメラの速度が、並べた途端に変わる原因になる）。 */
+body.compact .panel{min-height:0;display:flex;align-items:center;justify-content:center}
+body.compact .vp{position:relative;inset:auto;aspect-ratio:auto}
 body.compact .transport{flex:0 0 auto;margin-top:6px;padding:7px}
 body.compact .transport .row{gap:6px}
-body.compact #btnHead,
 body.compact .transport .btn[data-step="-10"],
 body.compact .transport .btn[data-step="10"]{display:none}
 body.compact #btnPlay{flex:1}
 /* ジョグ帯は出さない。映像の上を横になぞれば同じことができる */
 body.compact .jog{display:none}
 body.compact #seekLab{display:none}
+body.compact .tv{font-size:.8rem}
+body.compact #btnHead{padding:4px 8px;font-size:.82rem}
 body.compact .seekrow{margin-top:6px}
 body.compact .transport .row{flex-wrap:nowrap}
 body.compact #btnPlay{flex:1;min-width:0}

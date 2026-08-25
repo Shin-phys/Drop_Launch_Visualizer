@@ -172,7 +172,6 @@
   <div class="transport">
     <div class="row">
       <button class="btn primary" id="btnPlay">▶ 再生</button>
-      <button class="btn" id="btnHead">⏮ 先頭</button>
       <button class="btn" data-step="-10">⏪ −10</button>
       <button class="btn" data-step="-1">◀ −1</button>
       <button class="btn" data-step="1">＋1 ▶</button>
@@ -190,6 +189,7 @@
       </span>
     </div>
     <div class="seekrow">
+      <button class="btn sm" id="btnHead">⏮ 先頭</button>
       <span class="mut small" id="seekLab">位置</span>
       <input type="range" id="seek" min="0" max="1" step="0.001" value="0">
       <span class="tv" id="tRead">0</span>
@@ -228,74 +228,84 @@
 </div>
 
 <div class="tabpane hidden" data-pane="observe:h">
-  <p style="margin-top:0"><b>ボールが真上に上がって、真下に落ちるように見える</b>ようにカメラを動かせますか。
-    まずは速さをいろいろ変えて探してみてください。</p>
+  <p style="margin-top:0">ボールが<b>真上に上がって真下に落ちる</b>ように見えますか。カメラの速さを探してみましょう。</p>
 
   <div class="subcard">
-    <h3>1. カメラでボールを追いかける</h3>
+    <h3>1. 帯を置く</h3>
     <div class="row">
       <button class="btn warn" id="obCam">カメラを動かす</button>
-      <button class="btn sm" id="obCamAuto" disabled>測った値に合わせる</button>
+      <button class="btn sm" id="obCamPick">ボールをタップ</button>
     </div>
-    <div class="slider" style="margin-top:8px"><span>カメラの速さ</span>
-      <input type="range" id="obCamV" min="-1.5" max="1.5" step="0.005" value="0">
-      <span class="v"><b id="obCamVv">0.00</b></span></div>
-    <p class="mut small" style="margin:0">単位は「画面幅／秒」。ひとつの速さで最後までボールが青い線に乗れば、水平方向は等速です。</p>
     <div id="obBandRow" class="hidden">
-      <h3 style="margin-top:12px">基準の帯</h3>
       <div class="slider"><span>位置</span><input type="range" id="obCamX" min="0" max="1" step="0.005" value="0.5"><span class="v"><b id="obCamXv">50%</b></span></div>
-      <div class="row" style="margin:0 0 6px">
-        <button class="btn sm" id="obCamPick">ボールをタップして合わせる</button>
-        <span class="mut small">帯は直接ドラッグでも動かせます</span>
-      </div>
-      <div class="slider"><span>幅</span><input type="range" id="obMaskW" min="0.03" max="0.5" step="0.01" value="0.12"><span class="v"><b id="obMaskWv">12%</b></span></div>
-      <div class="slider"><span>線の濃さ</span><input type="range" id="obLineOp" min="0" max="1" step="0.05" value="1"><span class="v"><b id="obLineOpv">100%</b></span></div>
-      <div class="slider"><span>帯の色</span><input type="range" id="obBandOp" min="0" max="0.6" step="0.02" value="0"><span class="v"><b id="obBandOpv">0%</b></span></div>
-      <div class="row" style="margin-top:8px">
-        <button class="btn sm" id="obMask">背景を隠す</button>
-        <button class="btn sm" id="obSbs">もとの映像と並べる</button>
-      </div>
-      <div id="obMaskRow" class="hidden">
-        <div class="slider"><span>外の濃さ</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.55"><span class="v"><b id="obMaskOpv">55%</b></span></div>
-        <p class="mut small" style="margin:0">速さを探すときは薄く（外れた向きが見えます）、決まったら濃くすると鉛直の運動だけが残ります。</p>
-      </div>
+      <div class="slider"><span>幅</span><input type="range" id="obMaskW" min="0.02" max="0.5" step="0.01" value="0.06"><span class="v"><b id="obMaskWv">6%</b></span></div>
+      <p class="mut small" style="margin:0">幅はボールの大きさくらいに。帯はドラッグでも動きます。</p>
     </div>
-    <p class="mut small" style="margin:8px 0 0" id="obCamMsg"></p>
   </div>
 
   <div class="subcard">
-    <h3>2. その速さを数字にする</h3>
+    <h3>2. 速さを探す</h3>
+    <div class="slider"><span>速さ</span>
+      <input type="range" id="obCamV" min="-1.5" max="1.5" step="0.005" value="0">
+      <input type="number" id="obCamVnum" class="numin" step="0.005" value="0.000"></div>
+    <div class="grid4">
+      <button class="btn sm" data-camv="-0.05">−0.05</button>
+      <button class="btn sm" data-camv="-0.005">−0.005</button>
+      <button class="btn sm" data-camv="0.005">＋0.005</button>
+      <button class="btn sm" data-camv="0.05">＋0.05</button>
+    </div>
+    <p class="mut small" style="margin:8px 0 0">再生 → 一時停止 → <b>⏮ 先頭</b> でやり直し。数値は直接入力できます。</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn sm" id="obMask">背景を隠す</button>
+      <button class="btn sm" id="obSbs">もとの映像と並べる</button>
+      <button class="btn sm" id="obCamAuto" disabled>測った値に合わせる</button>
+    </div>
+    <div id="obMaskRow" class="hidden">
+      <div class="slider"><span>外の濃さ</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.75"><span class="v"><b id="obMaskOpv">75%</b></span></div>
+      <div class="slider"><span>線の濃さ</span><input type="range" id="obLineOp" min="0" max="1" step="0.05" value="0.5"><span class="v"><b id="obLineOpv">50%</b></span></div>
+      <div class="slider"><span>帯の色</span><input type="range" id="obBandOp" min="0" max="0.6" step="0.02" value="0"><span class="v"><b id="obBandOpv">0%</b></span></div>
+      <p class="mut small" style="margin:0">合ってきたら外を濃くして、もう一度。</p>
+    </div>
+  </div>
+
+  <div class="subcard">
+    <h3>3. 速さを数字にする</h3>
     <div class="row"><span class="small">Δt ＝</span><select id="obDtSel"></select>
       <span class="big" id="obDtRead">—</span></div>
-    <p class="mut small" style="margin:6px 0 10px">
+    <details><summary>なぜ Δt で測るのか</summary><div class="db">
       「1コマ」は端末によって 1/30 秒だったり 1/240 秒だったりします。そこで観察の単位には
-      <b>Δt ＝ 何コマ分</b>という時間を使い、コマ数と秒の両方を表示します。
-      <b>等速かどうかの判定は fps に関係しません</b>。fps が効くのは「Δt が何秒か」を数値で言うときだけです。</p>
+      <b>Δt ＝ 何コマ分</b>という時間を使い、コマ数と秒の両方を表示しています。
+      等速かどうかの判定は fps に関係しません。fps が効くのは「Δt が何秒か」を数値で言うときだけです。
+    </div></details>
     <div class="stepline"><span class="num" id="obM1">1</span>
-      <button class="btn" id="obMeas1">① いまのボールの位置をクリック</button>
+      <button class="btn" id="obMeas1">① ボールをタップ</button>
       <span class="mut small" id="obMeas1v">—</span></div>
     <div class="stepline"><span class="num" id="obM2">2</span>
-      <button class="btn" id="obMeas2" disabled>② Δt 後のボールの位置をクリック</button>
+      <button class="btn" id="obMeas2" disabled>② Δt 後のボールをタップ</button>
       <span class="mut small" id="obMeas2v">—</span></div>
     <div class="row"><button class="btn sm" id="obMeasReset">はかり直す</button>
-      <span class="mut small">拡大しておくと選びやすくなります</span></div>
+      <span class="mut small">測るあいだカメラは止まります。拡大すると選びやすくなります。</span></div>
     <div class="note good small hidden" id="obMeasOut" style="margin-top:10px"></div>
     <div class="note small hidden" id="obCompare" style="margin-top:8px"></div>
   </div>
 
   <div class="subcard">
-    <h3>3. 確かめる</h3>
+    <h3>4. Δt ずつ進めて確かめる</h3>
     <div class="row">
-      <button class="btn warn" id="obGrid" disabled>この間隔で縦線を引く</button>
-      <button class="btn" id="obPred" disabled>予想の位置を出す</button>
+      <button class="btn warn" id="obGrid" disabled>縦線を出す</button>
+      <button class="btn sm" id="obPred" disabled>予想を出す</button>
     </div>
-    <p class="mut small" style="margin:8px 0 0">水平方向が等速なら、再生すると <b>Δt ごとにちょうど1本ずつ</b>線を通過するはずです。ずれたら等速ではありません。</p>
+    <div class="grid2" style="margin-top:8px">
+      <button class="btn" id="obDtPrev">◀ Δt もどる</button>
+      <button class="btn" id="obDtNext">Δt すすむ ▶</button>
+    </div>
+    <p class="mut small" style="margin:8px 0 0">Δt ごとに、線を1本ずつ通りますか。</p>
   </div>
 </div>
 
 <div class="tabpane hidden" data-pane="observe:v">
   <p style="margin-top:0">最高点を <b>t = 0</b> として、<b>下り（+t）</b>と<b>上りの逆再生（−t）</b>を同時に流します。
-    上りと下りがそっくり同じなら、鉛直方向の運動は最高点をはさんで<b>時間を反転しても同じ</b>ということです。</p>
+    ふたつは同じに見えますか。</p>
   <div class="row"><span class="small">並べ方</span>
     <div class="seg sm" id="obMirSeg">
       <button data-m="side" class="on">左右に並べる</button><button data-m="over">重ねる</button>
@@ -315,7 +325,7 @@
     <div class="row"><button class="btn" id="obHG">高さの線を出す</button>
       <span class="mut small">線をドラッグして、上りと下りで同じ高さに同時に来るか見ます</span></div>
   </div>
-  <div class="note small" style="margin-top:10px">ぴったり重なったら、こう言えます ─ <b>上りは、下りを逆再生したものと同じ</b>。つまり最高点から先の運動は、最高点で静かに手をはなしたのと同じことになります。</div>
+  <p class="mut small" style="margin-bottom:0">重なりましたか。重なったとしたら、上りと下りについて何が言えるでしょう。</p>
 </div>
 
 <div class="tabpane hidden" data-pane="observe:sum">
