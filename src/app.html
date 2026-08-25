@@ -241,14 +241,24 @@
       <input type="range" id="obCamV" min="-1.5" max="1.5" step="0.005" value="0">
       <span class="v"><b id="obCamVv">0.00</b></span></div>
     <p class="mut small" style="margin:0">単位は「画面幅／秒」。ひとつの速さで最後までボールが青い線に乗れば、水平方向は等速です。</p>
-    <div class="row" style="margin-top:10px">
-      <button class="btn sm" id="obMask">背景を隠す</button>
-      <button class="btn sm" id="obSbs">もとの映像と並べる</button>
-    </div>
-    <div id="obMaskRow" class="hidden">
-      <div class="slider"><span>帯の幅</span><input type="range" id="obMaskW" min="0.03" max="0.5" step="0.01" value="0.12"><span class="v"><b id="obMaskWv">12%</b></span></div>
-      <div class="slider"><span>外の濃さ</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.55"><span class="v"><b id="obMaskOpv">55%</b></span></div>
-      <p class="mut small" style="margin:0">速さを探すときは薄く（外れた向きが見えます）、決まったら濃くすると鉛直の運動だけが残ります。</p>
+    <div id="obBandRow" class="hidden">
+      <h3 style="margin-top:12px">基準の帯</h3>
+      <div class="slider"><span>位置</span><input type="range" id="obCamX" min="0" max="1" step="0.005" value="0.5"><span class="v"><b id="obCamXv">50%</b></span></div>
+      <div class="row" style="margin:0 0 6px">
+        <button class="btn sm" id="obCamPick">ボールをタップして合わせる</button>
+        <span class="mut small">帯は直接ドラッグでも動かせます</span>
+      </div>
+      <div class="slider"><span>幅</span><input type="range" id="obMaskW" min="0.03" max="0.5" step="0.01" value="0.12"><span class="v"><b id="obMaskWv">12%</b></span></div>
+      <div class="slider"><span>線の濃さ</span><input type="range" id="obLineOp" min="0" max="1" step="0.05" value="1"><span class="v"><b id="obLineOpv">100%</b></span></div>
+      <div class="slider"><span>帯の色</span><input type="range" id="obBandOp" min="0" max="0.6" step="0.02" value="0"><span class="v"><b id="obBandOpv">0%</b></span></div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm" id="obMask">背景を隠す</button>
+        <button class="btn sm" id="obSbs">もとの映像と並べる</button>
+      </div>
+      <div id="obMaskRow" class="hidden">
+        <div class="slider"><span>外の濃さ</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.55"><span class="v"><b id="obMaskOpv">55%</b></span></div>
+        <p class="mut small" style="margin:0">速さを探すときは薄く（外れた向きが見えます）、決まったら濃くすると鉛直の運動だけが残ります。</p>
+      </div>
     </div>
     <p class="mut small" style="margin:8px 0 0" id="obCamMsg"></p>
   </div>

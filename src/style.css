@@ -153,8 +153,9 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 .tri{position:absolute;top:0;width:0;height:0;border-left:9px solid transparent;
   border-right:9px solid transparent;border-top:14px solid var(--pred);margin-left:-9px}
 
-/* 背景を隠す縦帯（追いかけカメラ用） */
+/* 追いかけカメラの基準の帯。band が帯そのもの、mask が外側の目隠し */
 .mask{position:absolute;top:0;bottom:0;pointer-events:none}
+.band{position:absolute;top:0;bottom:0;pointer-events:none}
 /* カメラが動いていることの表示 */
 .cambadge{position:absolute;right:6px;bottom:6px;z-index:10;background:rgba(77,163,255,.92);
   color:#08111c;font-size:.74rem;font-weight:700;padding:1px 8px;border-radius:6px;

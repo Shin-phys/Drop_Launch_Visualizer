@@ -10,7 +10,7 @@ var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
 var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,
   x1:null,y1:null,x2:null,y2:null,sMark:0,arm:0,
   showGrid:false,showPred:false,camOn:false,vx:0,vxAuto:0,vxManual:null,
-  maskOn:false,maskW:0.12,maskOp:0.55,sbs:false,camX:0.5,
+  maskOn:false,maskW:0.12,maskOp:0.55,bandOp:0,lineOp:1,sbs:false,camX:0.5,
   mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4};
 A.O=O;
 var P1=function(){return A.P('O1');}, P2=function(){return A.P('O2');};
@@ -67,7 +67,7 @@ $('#obRangeReset').addEventListener('click',function(){O.fStart=O.fApex=O.fEnd=n
 /* ---------- 位置をはかる ---------- */
 function resetMeasure(){
   O.x1=O.y1=O.x2=O.y2=null;O.arm=0;O.showGrid=false;O.showPred=false;O.vxAuto=0;O.vxManual=null;
-  O.camX=0.5;
+  O.camX=0.5;$('#obCamX').value='0.5';$('#obCamXv').textContent='50%';
   $('#obMeas1v').textContent='—';$('#obMeas2v').textContent='—';
   $('#obM1').classList.remove('done');$('#obM2').classList.remove('done');
   $('#obMeas2').disabled=true;
@@ -81,6 +81,7 @@ function armUI(){A.ov.arm(O.arm>0);
   $('#obMeas1').classList.toggle('warn',O.arm===1);
   $('#obMeas2').classList.toggle('warn',O.arm===2);
   $('#obApexPick').classList.toggle('warn',O.arm===3);
+  $('#obCamPick').classList.toggle('warn',O.arm===4);
 }
 $('#obMeasReset').addEventListener('click',resetMeasure);
 $('#obMeas1').addEventListener('click',function(){O.arm=1;armUI();});
@@ -121,6 +122,8 @@ function pick(pid){
     }else if(O.arm===3){
       O.apexX=x;O.arm=0;armUI();
       $('#obApexV').textContent='横 '+(x*100).toFixed(1)+'%';
+    }else if(O.arm===4){
+      O.arm=0;armUI(); setCamX(x);
     }
     paint();
   };
@@ -137,7 +140,7 @@ function finishMeasure(){
   /* カメラをまだ触っていない場合だけ、測った値を入れておく
      （自分で合わせた値があるときは上書きしない。それが答え合わせになるので） */
   if(Math.abs(O.vxManual)<0.01)O.vx=O.vxAuto;
-  O.camX=O.x1;
+  setCamX(O.x1);
   $('#obMeasOut').classList.remove('hidden');
   $('#obMeasOut').innerHTML='Δt ＝ <b>'+O.dtF+' コマ ＝ '+f3(dtSec())+' 秒</b> のあいだに、'+
     'ボールは横に <b>画面幅の '+(Math.abs(d)*100).toFixed(1)+'%</b> 進みました。<br>'+
@@ -172,6 +175,21 @@ $('#obCam').addEventListener('click',function(){
     ?'ボールが青い線の上を、まっすぐ上下するように速さを合わせてください。ひとつの速さで最後まで線に乗れば、水平方向は等速です。':'';
   syncHButtons(); A.syncPanels(); setStage();
 });
+function setCamX(x,fromSlider){
+  O.camX=clamp(x,0,1);
+  if(!fromSlider)$('#obCamX').value=String(O.camX);
+  $('#obCamXv').textContent=Math.round(O.camX*100)+'%';
+  place();
+}
+A.observeSetCamX=setCamX;
+$('#obCamX').addEventListener('input',function(){setCamX(parseFloat(this.value),true);});
+$('#obCamPick').addEventListener('click',function(){O.arm=4;armUI();});
+$('#obLineOp').addEventListener('input',function(){
+  O.lineOp=parseFloat(this.value);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';place();
+});
+$('#obBandOp').addEventListener('input',function(){
+  O.bandOp=parseFloat(this.value);$('#obBandOpv').textContent=Math.round(O.bandOp*100)+'%';place();
+});
 $('#obMask').addEventListener('click',function(){
   O.maskOn=!O.maskOn; A.show('#obMaskRow',O.maskOn); syncHButtons(); paint();
 });
@@ -195,8 +213,7 @@ function syncHButtons(){
   $('#obMask').textContent=O.maskOn?'背景を出す':'背景を隠す';
   $('#obSbs').classList.toggle('ok',O.sbs);
   $('#obSbs').textContent=O.sbs?'並べるのをやめる':'もとの映像と並べる';
-  $('#obMask').disabled=!O.camOn;
-  $('#obSbs').disabled=!O.camOn;
+  A.show('#obBandRow',O.camOn);
   if(!O.camOn)A.show('#obMaskRow',false);
 }
 $('#obCamV').addEventListener('input',function(){
@@ -262,8 +279,10 @@ function paint(){
       /* 基準の縦線。測定前でも出し、ドラッグしてボールに合わせられるようにする */
       var cl=A.ov.el(p1,'vline cam',O.x1==null?'ここに合わせる':null);
       cl.addEventListener('pointerdown',function(ev){
-        A.dragX(ev,p1.vp,function(x){O.camX=x;place();});
+        A.dragX(ev,p1.vp,function(x){setCamX(x);});
       });
+      /* 帯そのもの（半透明の青）。濃さ 0 なら線だけになる */
+      A.ov.el(p1,'band');
       /* 背景を隠す縦帯。動く背景が視界から外れると、ボールの動きが鉛直だけに見える */
       if(O.maskOn){A.ov.el(p1,'mask ml');A.ov.el(p1,'mask mr');}
     }
@@ -298,10 +317,17 @@ function place(){
     badge.classList.toggle('hidden',!cam);
     if(cam)badge.textContent=(O.vx>=0?'カメラ →':'← カメラ')+' '+Math.abs(O.vx).toFixed(2)+' 画面幅/秒';
   }
+  var c=O.camX, w=O.maskW;
   var cline=P1().ovl.querySelector('.cam');
-  if(cline)cline.style.left=(O.camX*100)+'%';
+  if(cline){cline.style.left=(c*100)+'%';cline.style.opacity=String(O.lineOp);}
+  var band=P1().ovl.querySelector('.band');
+  if(band){
+    band.style.left=(Math.max(0,c-w/2)*100)+'%';
+    band.style.width=(Math.min(1,c+w/2)-Math.max(0,c-w/2))*100+'%';
+    band.style.background='rgba(77,163,255,'+O.bandOp+')';
+  }
   if(cam&&O.maskOn){
-    var c=O.camX, w=O.maskW, o=String(O.maskOp);
+    var o=String(O.maskOp);
     var l=P1().ovl.querySelector('.ml'), r=P1().ovl.querySelector('.mr');
     if(l){l.style.left='0';l.style.width=(Math.max(0,c-w/2)*100)+'%';l.style.background='rgba(0,0,0,'+o+')';}
     if(r){r.style.left=(Math.min(1,c+w/2)*100)+'%';r.style.right='0';r.style.background='rgba(0,0,0,'+o+')';}
@@ -329,7 +355,7 @@ $('#obSave').addEventListener('click',function(){
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
     x1:O.x1,y1:O.y1,x2:O.x2,y2:O.y2,sMark:O.sMark,vx:O.vx,vxAuto:O.vxAuto,
     apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,
-    camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,name:P1().name});
+    camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,bandOp:O.bandOp,lineOp:O.lineOp,name:P1().name});
   $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
 });
 $('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jsonIn').click();});
@@ -337,11 +363,16 @@ A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
   ['fStart','fApex','fEnd','x1','y1','x2','y2','sMark','vx','vxAuto','apexX','hgY',
-   'camX','maskW','maskOp'].forEach(function(k){
+   'camX','maskW','maskOp','bandOp','lineOp'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
   if(d.mir)O.mir=d.mir;
   if(typeof d.flip==='boolean'){O.flip=d.flip;$('#obFlip').checked=d.flip;}
   if(typeof d.ovop==='number'){O.ovop=d.ovop;$('#obOvop').value=String(d.ovop);$('#obOvopV').textContent=Math.round(d.ovop*100)+'%';}
+  $('#obCamX').value=String(O.camX);$('#obCamXv').textContent=Math.round(O.camX*100)+'%';
+  $('#obMaskW').value=String(O.maskW);$('#obMaskWv').textContent=Math.round(O.maskW*100)+'%';
+  $('#obMaskOp').value=String(O.maskOp);$('#obMaskOpv').textContent=Math.round(O.maskOp*100)+'%';
+  $('#obBandOp').value=String(O.bandOp);$('#obBandOpv').textContent=Math.round(O.bandOp*100)+'%';
+  $('#obLineOp').value=String(O.lineOp);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';
   fillDt(); refreshRange();
   if(O.x1!=null&&O.x2!=null){
     $('#obM1').classList.add('done');$('#obM2').classList.add('done');
