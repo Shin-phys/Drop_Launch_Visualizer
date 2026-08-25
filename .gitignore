@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+._*
+
+# 動作確認用の一時ファイル
+*.webm
+*.mp4
+*.mov
+shot_*.png
+node_modules/
+
+# ロックファイルの退避先（中身は削除してかまいません）
+_to_delete/

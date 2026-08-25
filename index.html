@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>投射運動を観る</title>
+<style>
+/* =========================================================
+   投射運動を観る — 共通スタイル
+   ここ1本だけを直せば、両モードの見た目がそろって変わります。
+   ========================================================= */
+
+/* ---- 色と寸法のトークン（まずここを触る） ---- */
+:root{
+  --bg:#0f1115; --card:#171b23; --card2:#1a212c; --pane:#232b39;
+  --line:#2a3040; --fg:#eef2f8; --mut:#98a3b4;
+  --acc:#4da3ff;     /* 左・基準の青 */
+  --acc2:#ffcc4d;    /* 右・目盛りの黄 */
+  --ok:#3ddc84;      /* ガイド線・完了 */
+  --mk:#ff6bd6;      /* 開始位置マーカー・最高点の軸 */
+  --pred:#7bffd4;    /* 予想マーカー */
+  --warnbg:#2b1d10; --warnln:#6b4a1f; --warnfg:#ffd7a3;
+  --tap:48px;        /* 指で押せる最小の高さ */
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{
+  background:var(--bg);color:var(--fg);font-size:16.5px;line-height:1.55;
+  font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",Meiryo,sans-serif;
+  -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+}
+.hidden{display:none!important}
+.mut{color:var(--mut)}
+.small{font-size:.88rem}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.grow{flex:1;min-width:0}
+h1{font-size:1.3rem;margin:0}
+h2{font-size:1.1rem;margin:0 0 8px}
+h3{font-size:.98rem;margin:14px 0 6px;color:var(--acc)}
+h3:first-child{margin-top:0}
+a{color:var(--acc)}
+
+/* ---- ボタン・入力 ---- */
+button{font:inherit;color:inherit;touch-action:manipulation}
+.btn{background:#242b38;border:1px solid var(--line);border-radius:11px;
+  padding:8px 13px;min-height:var(--tap);cursor:pointer}
+.btn:hover{background:#2e3747}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--acc);color:#08111c;border-color:transparent;font-weight:700}
+.btn.ok{background:var(--ok);color:#04150b;border-color:transparent;font-weight:700}
+.btn.warn{background:var(--acc2);color:#241c00;border-color:transparent;font-weight:700}
+.btn.sm{min-height:40px;padding:5px 10px;font-size:.9rem;border-radius:9px}
+.btn.big{min-height:56px;font-size:1.05rem;font-weight:700}
+.btn.wide{width:100%;justify-content:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.seg button{background:#1c222c;color:var(--mut);border:0;padding:8px 13px;
+  min-height:var(--tap);cursor:pointer}
+.seg button.on{background:var(--acc);color:#08111c;font-weight:700}
+.seg.sm button{min-height:40px;padding:5px 11px;font-size:.9rem}
+select{font:inherit;background:#242b38;color:var(--fg);border:1px solid var(--line);
+  border-radius:10px;padding:7px 9px;min-height:44px}
+label{display:inline-flex;gap:7px;align-items:center}
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;
+  flex:1;min-width:100px;height:36px}
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:#2f3a4b;border-radius:3px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;
+  border-radius:50%;background:var(--acc);margin-top:-10px;border:2px solid var(--bg)}
+input[type=range]::-moz-range-track{height:6px;background:#2f3a4b;border-radius:3px}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;
+  background:var(--acc);border:2px solid var(--bg)}
+kbd{background:#2c3441;border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:5px;padding:0 6px;font-size:.84rem}
+
+/* ---- 箱 ---- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.subcard{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:12px;margin-top:10px}
+.note{background:#122031;border:1px solid #274563;border-radius:10px;padding:8px 12px;
+  color:#bcd8f7;font-size:.88rem}
+.note.warn{background:var(--warnbg);border-color:var(--warnln);color:var(--warnfg)}
+.note.good{background:#0f2a1c;border-color:#245c3d;color:#b6f0d0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+
+/* ---- ヘッダー ---- */
+#app{display:flex;flex-direction:column;min-height:100%}
+#hdr{position:sticky;top:0;z-index:15;background:#131822;border-bottom:1px solid var(--line);
+  padding:calc(6px + env(safe-area-inset-top)) 10px 8px}
+.hrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:1500px;margin:0 auto}
+.brand{font-weight:700;font-size:1.02rem;white-space:nowrap}
+.wrap{max-width:1500px;margin:0 auto;padding:12px 12px calc(24px + env(safe-area-inset-bottom));width:100%}
+
+/* ---- 読み込み ---- */
+.dropbox{border:2px dashed #3d4759;border-radius:14px;padding:12px;background:#12161e}
+.dropbox.over{border-color:var(--acc);background:#152436}
+.zones{display:grid;gap:10px;grid-template-columns:1fr}
+.zones.two{grid-template-columns:1fr 1fr}
+@media(max-width:760px){.zones.two{grid-template-columns:1fr}}
+.zone{border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center;background:#171d27}
+.zone .zt{font-size:1.02rem;font-weight:700;margin-bottom:8px}
+.fname{color:var(--ok);font-size:.85rem;margin-top:8px;word-break:break-all}
+.tips{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+.tips b{color:var(--acc2)}
+.tips ul{margin:6px 0 0;padding-left:1.15em}
+.tips li{margin:1px 0;font-size:.9rem}
+details summary{cursor:pointer;color:var(--acc);margin-top:8px}
+details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
+
+/* ---- ステージ ---- */
+.stage{display:grid;gap:8px;--ovop:.5}
+.stage.one{grid-template-columns:1fr}
+.stage.side{grid-template-columns:1fr 1fr}
+.stage.stack{grid-template-columns:1fr}
+.stage.over{grid-template-columns:1fr}
+.stage.over .panel{grid-area:1/1}
+.stage.over .panel.dim{opacity:var(--ovop)}
+.stage.over .panel.dim .chip,.stage.over .panel.dim .fnum{visibility:hidden}
+@media(max-width:760px){.stage.side{grid-template-columns:1fr 1fr}}
+.panel{position:relative;background:#000;border:2px solid #20262f;border-radius:12px;overflow:hidden}
+.panel.off{display:none}
+.panel.active{border-color:var(--acc)}
+.vp{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;touch-action:none}
+.vp.crosshair{cursor:crosshair}
+.vp.movable{cursor:ns-resize}
+.vp video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.chip{position:absolute;left:6px;top:6px;z-index:4;font-size:.76rem;font-weight:700;
+  padding:1px 9px;border-radius:6px;background:rgba(77,163,255,.92);color:#08111c;pointer-events:none}
+.chip.r{background:rgba(255,204,77,.92);color:#241c00}
+.fnum{position:absolute;left:6px;bottom:6px;z-index:4;background:rgba(0,0,0,.62);
+  font-size:.74rem;padding:1px 8px;border-radius:6px;pointer-events:none;font-variant-numeric:tabular-nums}
+.hintbar{position:absolute;left:0;right:0;bottom:0;z-index:5;background:rgba(10,14,20,.86);
+  padding:5px 10px;font-size:.82rem;color:#cfe0f5;text-align:center}
+
+/* ---- オーバーレイの線 ---- */
+.ovl{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+.ovl.noev>*{pointer-events:none!important}
+.hline{position:absolute;left:0;right:0;height:0;pointer-events:auto;cursor:ns-resize;touch-action:none}
+.hline::before{content:"";position:absolute;left:0;right:0;top:-14px;height:30px}
+.hline.guide{border-top:3px solid var(--ok)}
+.hline.mark{border-top:3px solid var(--mk)}
+.hline.rule{border-top:2px dashed var(--acc2);cursor:ns-resize}
+.hline.rule.o{border-top:3px solid #ff9f43}
+.vline{position:absolute;top:0;bottom:0;width:0;border-left:1px solid rgba(255,255,255,.42)}
+.vline.k0{border-left:2px solid var(--acc)}
+.vline.cam{border-left:3px solid var(--acc)}
+.vline.axis{border-left:3px solid var(--mk);pointer-events:auto;cursor:ew-resize;touch-action:none}
+.vline.axis::before{content:"";position:absolute;top:0;bottom:0;left:-14px;width:30px}
+.tag{position:absolute;font-size:.72rem;padding:0 6px;border-radius:5px;font-weight:700;white-space:nowrap}
+.hline .tag{left:5px;top:-21px}
+.vline .tag{top:4px;left:4px;background:rgba(0,0,0,.6);color:#cfe0f5}
+.hline.guide .tag{background:var(--ok);color:#04150b}
+.hline.mark .tag{background:var(--mk);color:#2a0020}
+.hline.rule .tag{left:auto;right:5px;top:-11px;background:rgba(0,0,0,.65);color:var(--acc2)}
+.hline.rule.o .tag{color:#ff9f43}
+.dot{position:absolute;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;
+  border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.55)}
+.dot.d1{background:var(--ok)} .dot.d2{background:var(--acc2)}
+.tri{position:absolute;top:0;width:0;height:0;border-left:9px solid transparent;
+  border-right:9px solid transparent;border-top:14px solid var(--pred);margin-left:-9px}
+
+/* ---- 操作バー ---- */
+.transport{background:#131924;border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
+.seekrow{display:flex;gap:10px;align-items:center;margin-top:8px}
+.tv{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:.94rem}
+.jog{height:50px;border-radius:11px;border:1px solid var(--line);margin-top:8px;
+  background:repeating-linear-gradient(90deg,#2b3444 0 2px,transparent 2px 14px);
+  display:flex;align-items:center;justify-content:center;color:var(--mut);
+  font-size:.85rem;touch-action:none}
+.jog.active{border-color:var(--acc);color:var(--acc)}
+
+/* ---- タブ ---- */
+.tabs{display:flex;gap:5px;margin:12px 0 0;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  padding-bottom:1px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{background:#1c222c;color:var(--mut);border:1px solid var(--line);border-bottom:0;
+  border-radius:10px 10px 0 0;padding:8px 14px;min-height:var(--tap);cursor:pointer;white-space:nowrap}
+.tabs button.on{background:var(--pane);color:var(--fg);font-weight:700}
+.tabpane{background:var(--pane);border:1px solid var(--line);border-radius:0 10px 10px 10px;padding:14px}
+.stepline{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:5px 0}
+.num{flex:0 0 27px;height:27px;border-radius:50%;background:var(--acc);color:#08111c;
+  font-weight:700;display:flex;align-items:center;justify-content:center;font-size:.88rem}
+.num.done{background:var(--ok);color:#04150b}
+.slider{display:grid;grid-template-columns:64px 1fr 74px;gap:8px;align-items:center;margin:6px 0}
+.slider .v{font-size:.84rem;color:var(--mut);text-align:right;font-variant-numeric:tabular-nums}
+.slider span:first-child{font-size:.88rem}
+.big{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
+table.tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:.9rem}
+table.tbl th,table.tbl td{border:1px solid var(--line);padding:5px 8px;text-align:left}
+table.tbl th{background:var(--card2);color:var(--mut);font-weight:600}
+
+/* ---- トースト ---- */
+.toast{position:fixed;left:50%;transform:translateX(-50%);
+  top:calc(72px + env(safe-area-inset-top));background:rgba(20,26,36,.96);
+  border:1px solid var(--line);border-radius:12px;padding:9px 16px;z-index:40;
+  font-size:.9rem;max-width:88vw;text-align:center}
+
+/* ドラッグ操作の途中で文字が選択されてしまうのを防ぐ（説明文は選べるままにする） */
+.btn,.seg,.tabs,.jog,.vp,.chip,.fnum,.num,.transport .row,.slider span,input[type=range]{
+  -webkit-user-select:none;user-select:none}
+
+/* ---- 画面が狭いとき ---- */
+@media(max-width:760px){
+  body{font-size:16px}
+  .brand{font-size:.95rem}
+  .wrap{padding:10px 8px calc(24px + env(safe-area-inset-bottom))}
+  .card{padding:12px}
+  .tabpane{padding:12px}
+  .transport{padding:8px}
+  .brand{display:none}                 /* 見出しの分だけ縦を節約 */
+  #kbHint{display:none}                /* キーボードの説明はスマホでは出さない */
+  .transport .row .btn{padding:8px 10px}
+  .seg.sm button{padding:5px 8px}
+}
+
+</style>
+</head>
+<body>
+<div id="app">
+
+<header id="hdr">
+  <div class="hrow">
+    <div class="brand">投射運動を観る</div>
+    <div class="seg sm" id="modeSeg">
+      <button data-mode="observe" class="on">① 斜方投射を観る</button>
+      <button data-mode="compare">② 自由落下とくらべる</button>
+    </div>
+    <label class="small">fps
+      <select id="fpsSel">
+        <option value="30">30</option><option value="60" selected>60</option>
+        <option value="120">120</option><option value="240">240</option>
+      </select>
+    </label>
+    <span class="mut small" id="fpsHint"></span>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ================= 読み込み ================= -->
+<section class="card" id="secLoad">
+  <h2 id="loadTitle">斜方投射の動画を読み込む</h2>
+  <p class="mut small" id="loadLead" style="margin-top:0"></p>
+
+  <div class="row hidden" id="cmpModeRow" style="margin-bottom:10px">
+    <div class="seg sm" id="cmpModeSeg">
+      <button data-cmode="A" class="on">1本の動画で（推奨）</button>
+      <button data-cmode="B">2本の動画で</button>
+    </div>
+    <span class="mut small" id="cmpModeHint"></span>
+  </div>
+
+  <div class="dropbox" id="dropbox">
+    <div class="zones" id="zones">
+      <div class="zone" data-target="O">
+        <div class="zt">斜方投射の動画</div>
+        <div class="row" style="justify-content:center">
+          <button class="btn primary" data-lib="O">🎞 動画を選ぶ</button>
+          <button class="btn" data-cap="O">📹 その場で撮る</button>
+        </div>
+        <div class="fname" data-name="O"></div>
+      </div>
+      <div class="zone hidden" data-target="A">
+        <div class="zt">自由落下と斜方投射が写った動画</div>
+        <div class="row" style="justify-content:center">
+          <button class="btn primary" data-lib="A">🎞 動画を選ぶ</button>
+          <button class="btn" data-cap="A">📹 その場で撮る</button>
+        </div>
+        <div class="fname" data-name="A"></div>
+      </div>
+      <div class="zone hidden" data-target="L">
+        <div class="zt">左：自由落下の動画</div>
+        <div class="row" style="justify-content:center">
+          <button class="btn primary" data-lib="L">🎞 選ぶ</button>
+          <button class="btn" data-cap="L">📹 撮る</button>
+        </div>
+        <div class="fname" data-name="L"></div>
+      </div>
+      <div class="zone hidden" data-target="R">
+        <div class="zt">右：斜方投射の動画</div>
+        <div class="row" style="justify-content:center">
+          <button class="btn primary" data-lib="R">🎞 選ぶ</button>
+          <button class="btn" data-cap="R">📹 撮る</button>
+        </div>
+        <div class="fname" data-name="R"></div>
+      </div>
+    </div>
+
+    <div class="tips" id="tipsObserve">
+      <b>撮影のポイント</b>
+      <ul>
+        <li>スマホは三脚・スタンドで固定し、撮り終わるまで触らない</li>
+        <li>ボールが<b>画面を横切る</b>ように、運動の面に正対して撮る</li>
+        <li>投射の全体（手をはなれてから落ちるまで）が画面に収まるように</li>
+        <li>撮る前に明るさとピントをロックする</li>
+        <li>背景に机の縁やものさしなど、動かない目印を入れる</li>
+        <li><b>明るい場所で、1080p・120fps のスロー撮影</b>で（30fps では落下が15コマしか写りません）</li>
+      </ul>
+      <details><summary>もっと見る</summary><div class="db">
+        <p>・<b>やや遠くから撮る</b>：近すぎると手前と奥で見かけの速さが変わります。数メートル離れてズームなしで撮ると、水平の等速性がきれいに出ます。</p>
+        <p>・<b>斜めに投げる</b>：真上に投げると水平成分が見えません。30〜60度くらいの角度で横に飛ばしてください。</p>
+        <p>・<b>fps は 120 を基本に</b>：高さ 1 m の落下は 0.45 秒しかありません。30fps だと落下全体が14コマ、
+          1:4:9:16 の「1」がわずか3コマ分で、開始点を1コマ間違えるだけで大きく狂います。
+          120fps なら「1」が約14コマになり、開始点の取り違えによる誤差は落下距離の 2% 以下に収まります。
+          240fps にしても、ここは 1% 弱に減るだけです。</p>
+        <p>・<b>スローで撮るとブレも減ります</b>：落下おわりのボールは 4.4 m/s で動くので、露光 1/30 秒では 15 cm も尾を引いて位置が読めません。
+          スローモーションは露光を自動的に短くするため、そのぶん位置の読み取れる映像になります。暗いと撮れないので、明るい場所で。</p>
+        <p>・<b>iPhone のスロー動画は書き出しに注意</b>：共有・書き出しをすると「30fps のゆっくり動画」に変換されることがあります。
+          その場合はこのアプリの fps を 30 にしてください。表示される秒数は実時間とずれますが、左右で条件が同じなので比較の結論は変わりません。</p>
+        <p>・<b>「超スローモーション」は避ける</b>：一部の機種にある、コマを補間して作るモードです。
+          実際には撮影されていないコマが混ざるので、物理の観察には使えません。素直な 120／240fps のスローを選んでください。</p>
+        <p>・<b>最高点は目で1コマを選ばない</b>：最高点の近くではボールがほとんど動かず、どのコマも同じに見えます。
+          fps を上げても目視の精度は上がりません。「鉛直：時間反転」のミラー再生で上りと下りを重ね、
+          ぴったり合う位置を探すほうが正確です。</p>
+        <p>・<b>手をはなれた後だけ</b>を観察します。手で押している間は力がはたらいているので、法則が違います。</p>
+      </div></details>
+    </div>
+
+    <div class="tips hidden" id="tipsCompare">
+      <b>撮影のポイント</b>
+      <ul>
+        <li>スマホは三脚・スタンドで固定し、撮り終わるまで触らない（ズーム・向き・位置を変えない）</li>
+        <li>落下・投射させる位置は、カメラからの距離を同じにする（床にテープで印を付ける）</li>
+        <li>運動は画面の中央寄りで行う</li>
+        <li>撮影前に明るさとピントをロックする</li>
+        <li>背景に共通の目印（机の縁、ものさし等）を入れる</li>
+        <li><b>明るい場所で、1080p・120fps のスロー撮影</b>で（30fps では落下が15コマしか写りません）</li>
+      </ul>
+      <details><summary>もっと見る</summary><div class="db">
+        <p>・<b>1本の動画で撮るのが確実</b>：同じ動画の中で「自由落下 → 斜方投射」と続けて撮れば、カメラ位置も倍率も完全に同じなので、スケールのずれが原理的に起きません。</p>
+        <p>・<b>fps は 120 を基本に</b>：高さ 1 m の落下は 0.45 秒しかありません。30fps だと落下全体が14コマ、
+          1:4:9:16 の「1」がわずか3コマ分で、開始点を1コマ間違えるだけで大きく狂います。
+          120fps なら「1」が約14コマになり、開始点の取り違えによる誤差は落下距離の 2% 以下に収まります。
+          240fps にしても、ここは 1% 弱に減るだけです。</p>
+        <p>・<b>スローで撮るとブレも減ります</b>：落下おわりのボールは 4.4 m/s で動くので、露光 1/30 秒では 15 cm も尾を引いて位置が読めません。
+          スローモーションは露光を自動的に短くするため、そのぶん位置の読み取れる映像になります。暗いと撮れないので、明るい場所で。</p>
+        <p>・<b>iPhone のスロー動画は書き出しに注意</b>：共有・書き出しをすると「30fps のゆっくり動画」に変換されることがあります。
+          その場合はこのアプリの fps を 30 にしてください。表示される秒数は実時間とずれますが、左右で条件が同じなので比較の結論は変わりません。</p>
+        <p>・<b>「超スローモーション」は避ける</b>：一部の機種にある、コマを補間して作るモードです。
+          実際には撮影されていないコマが混ざるので、物理の観察には使えません。素直な 120／240fps のスローを選んでください。</p>
+        <p>・<b>カメラは運動面に正対させる</b>：斜めから撮ると手前と奥で見かけの大きさが変わり、落下距離を比べられません。</p>
+        <p>・<b>ものさしを一緒に写す</b>：鉛直に立てたものさしを画面内に入れておくと、落下距離を実測値として読み取れます。</p>
+        <p>・<b>明るい場所で撮る</b>：暗いと速い物体がぶれて位置を読み取れません。</p>
+      </div></details>
+    </div>
+  </div>
+  <p class="note small" style="margin-top:10px">🔒 動画はこのブラウザの中だけで再生されます。サーバーには送信も保存もされません。</p>
+</section>
+
+<!-- ================= ステージ ================= -->
+<section class="card hidden" id="secStage">
+  <div class="stage one" id="stage">
+    <div class="panel off" data-side="O1">
+      <div class="vp" data-vp="O1"><video data-video="O1" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="O1"></div></div>
+      <span class="chip" data-chip="O1">映像</span><span class="fnum" data-fnum="O1">0</span>
+    </div>
+    <div class="panel off" data-side="O2">
+      <div class="vp" data-vp="O2"><video data-video="O2" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="O2"></div></div>
+      <span class="chip r" data-chip="O2">逆再生（上り）</span><span class="fnum" data-fnum="O2">0</span>
+    </div>
+    <div class="panel off" data-side="L">
+      <div class="vp" data-vp="L"><video data-video="L" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="L"></div></div>
+      <span class="chip" data-chip="L">左 自由落下</span><span class="fnum" data-fnum="L">0</span>
+    </div>
+    <div class="panel off" data-side="R">
+      <div class="vp" data-vp="R"><video data-video="R" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="R"></div></div>
+      <span class="chip r" data-chip="R">右 斜方投射</span><span class="fnum" data-fnum="R">0</span>
+    </div>
+    <div class="hintbar hidden" id="hintbar"></div>
+  </div>
+
+  <div class="transport">
+    <div class="row">
+      <button class="btn primary" id="btnPlay">▶ 再生</button>
+      <button class="btn" id="btnHead">⏮ 先頭</button>
+      <button class="btn" data-step="-10">⏪ −10</button>
+      <button class="btn" data-step="-1">◀ −1</button>
+      <button class="btn" data-step="1">＋1 ▶</button>
+      <button class="btn" data-step="10">＋10 ⏩</button>
+      <div class="seg sm" id="rateSeg">
+        <button data-rate="1" class="on">×1</button><button data-rate="0.5">×1/2</button>
+        <button data-rate="0.25">×1/4</button><button data-rate="0.125">×1/8</button>
+      </div>
+    </div>
+    <div class="seekrow">
+      <span class="mut small" id="seekLab">位置</span>
+      <input type="range" id="seek" min="0" max="1" step="0.001" value="0">
+      <span class="tv" id="tRead">0</span>
+    </div>
+    <div class="jog" id="jog">← 指でなぞるとコマ送り →</div>
+    <p class="mut small" id="kbHint" style="margin:6px 0 0">
+      <kbd>←</kbd><kbd>→</kbd> でコマ送り（<kbd>Shift</kbd>で10コマ）、<kbd>Space</kbd>で再生／一時停止。
+      映像の上を横になぞってもコマ送りできます。
+    </p>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="panes">
+
+
+<!-- ======== ① 斜方投射を観る ======== -->
+<div class="tabpane hidden" data-pane="observe:range">
+  <p class="mut small" style="margin-top:0">観察する区間を決めます。コマ送りで探して、それぞれのボタンを押してください。</p>
+  <div class="stepline"><span class="num" id="obN1">1</span>
+    <button class="btn" data-mark="fStart">ここを「手をはなれた瞬間」に</button>
+    <span class="mut small">開始 <b id="obVStart">—</b></span></div>
+  <div class="stepline"><span class="num" id="obN2">2</span>
+    <button class="btn" data-mark="fApex">ここを「最高点」に</button>
+    <span class="mut small">最高点 <b id="obVApex">—</b></span></div>
+  <div class="stepline"><span class="num" id="obN3">3</span>
+    <button class="btn" data-mark="fEnd">ここを「おわり」に</button>
+    <span class="mut small">おわり <b id="obVEnd">—</b></span></div>
+  <div class="note small" style="margin-top:10px">最高点は「上がるのが止まって、下がり始める直前のコマ」です。迷ったら、上下の動きがいちばん小さいところを選んでください。</div>
+  <div class="row" style="margin-top:10px">
+    <button class="btn ok" id="obRangeDone">決まった → 水平を見る</button>
+    <button class="btn sm" id="obRangeReset">やり直す</button>
+  </div>
+</div>
+
+<div class="tabpane hidden" data-pane="observe:h">
+  <p style="margin-top:0">水平方向にはどんな法則がありそうですか。<b>まず予想してから</b>、測ってみましょう。</p>
+  <div class="subcard">
+    <h3>Δt（時間のものさし）を決める</h3>
+    <div class="row"><span class="small">Δt ＝</span><select id="obDtSel"></select>
+      <span class="big" id="obDtRead">—</span></div>
+    <p class="mut small" style="margin:8px 0 0">
+      「1コマ」は端末によって 1/30 秒だったり 1/240 秒だったりします。そこで観察の単位には
+      <b>Δt ＝ 何コマ分</b>という時間を使い、コマ数と秒の両方を表示します。
+      <b>等速かどうかの判定は fps に関係しません</b>。fps が効くのは「Δt が何秒か」を数値で言うときだけです。</p>
+  </div>
+  <div class="subcard">
+    <h3>ボールの位置を2回はかる</h3>
+    <div class="stepline"><span class="num" id="obM1">1</span>
+      <button class="btn" id="obMeas1">① いまのボールの位置をクリック</button>
+      <span class="mut small" id="obMeas1v">—</span></div>
+    <div class="stepline"><span class="num" id="obM2">2</span>
+      <button class="btn" id="obMeas2" disabled>② Δt 後のボールの位置をクリック</button>
+      <span class="mut small" id="obMeas2v">—</span></div>
+    <div class="row"><button class="btn sm" id="obMeasReset">はかり直す</button>
+      <span class="mut small">クリック（タップ）した点が印になります</span></div>
+    <div class="note good small hidden" id="obMeasOut" style="margin-top:10px"></div>
+  </div>
+  <div class="subcard">
+    <h3>確かめる</h3>
+    <div class="row">
+      <button class="btn warn" id="obGrid" disabled>この間隔で縦線を引く</button>
+      <button class="btn" id="obPred" disabled>予想の位置を出す</button>
+    </div>
+    <p class="mut small" style="margin:8px 0 0">水平方向が等速なら、再生すると <b>Δt ごとにちょうど1本ずつ</b>線を通過するはずです。ずれたら等速ではありません。</p>
+    <h3>追いかけカメラ</h3>
+    <div class="row"><button class="btn" id="obCam" disabled>カメラでボールを追う</button>
+      <span class="mut small">画面を横に動かして、ボールが真上に上がって見えるか確かめます</span></div>
+    <div class="slider" style="margin-top:8px"><span>カメラの速さ</span>
+      <input type="range" id="obCamV" min="0" max="2.5" step="0.005" value="0">
+      <span class="v"><b id="obCamVv">0.00</b></span></div>
+    <div class="row"><button class="btn sm" id="obCamAuto">測った値に戻す</button>
+      <span class="mut small">単位は「画面幅／秒」</span></div>
+    <p class="mut small" style="margin:8px 0 0" id="obCamMsg"></p>
+  </div>
+</div>
+
+<div class="tabpane hidden" data-pane="observe:v">
+  <p style="margin-top:0">最高点を <b>t = 0</b> として、<b>下り（+t）</b>と<b>上りの逆再生（−t）</b>を同時に流します。
+    上りと下りがそっくり同じなら、鉛直方向の運動は最高点をはさんで<b>時間を反転しても同じ</b>ということです。</p>
+  <div class="row"><span class="small">並べ方</span>
+    <div class="seg sm" id="obMirSeg">
+      <button data-m="side" class="on">左右に並べる</button><button data-m="over">重ねる</button>
+    </div>
+    <label><input type="checkbox" id="obFlip" checked> 左右も反転して重ねる</label></div>
+  <div class="slider" style="margin-top:8px"><span>重ねの濃さ</span>
+    <input type="range" id="obOvop" min="0.15" max="1" step="0.05" value="0.55">
+    <span class="v"><b id="obOvopV">55%</b></span></div>
+  <div class="subcard">
+    <h3>最高点の真下に線を合わせる</h3>
+    <div class="row"><button class="btn" id="obApexPick">最高点のボールの位置をクリック</button>
+      <span class="mut small" id="obApexV">—</span></div>
+    <p class="mut small" style="margin:8px 0 0">左右反転して重ねるときの折り返しの軸になります。ピンクの線は左右にドラッグでも動かせます。</p>
+  </div>
+  <div class="subcard">
+    <h3>高さをくらべる</h3>
+    <div class="row"><button class="btn" id="obHG">高さの線を出す</button>
+      <span class="mut small">線をドラッグして、上りと下りで同じ高さに同時に来るか見ます</span></div>
+  </div>
+  <div class="note small" style="margin-top:10px">ぴったり重なったら、こう言えます ─ <b>上りは、下りを逆再生したものと同じ</b>。つまり最高点から先の運動は、最高点で静かに手をはなしたのと同じことになります。</div>
+</div>
+
+<div class="tabpane hidden" data-pane="observe:sum">
+  <h3>わかったこと</h3>
+  <table class="tbl">
+    <tr><th style="width:30%">向き</th><th>見えたこと</th></tr>
+    <tr><td><b>水平</b></td><td>Δt ごとに同じ距離だけ進む ＝ <b>等速直線運動</b></td></tr>
+    <tr><td><b>鉛直</b></td><td>最高点をはさんで上りと下りが同じ ＝ <b>時間反転で対称</b></td></tr>
+  </table>
+  <h3>だから、次はこう考えられます</h3>
+  <p>最高点では鉛直方向の速さが 0 です。そこから先の落ち方は、<b>その高さで静かに手をはなした自由落下</b>と同じはず。
+    水平方向は等速のままなので、横に動いているだけ。これが<b>水平投射</b>です。</p>
+  <div class="note good small" style="margin-bottom:10px">
+    この動画と最高点を、そのまま②の「右・斜方投射」に引き継げます。開始点（最高点）も設定済みの状態で始められます。</div>
+  <div class="row">
+    <button class="btn big primary" id="obHandoff">② に引き継いでくらべる →</button>
+    <button class="btn" id="obSave">観察の設定を書き出す</button>
+    <button class="btn" id="obLoad">設定を読み込む</button>
+  </div>
+  <p class="mut small" id="obSaveMsg"></p>
+</div>
+
+<!-- ======== ② 自由落下とくらべる ======== -->
+<div class="tabpane hidden" data-pane="compare:start">
+  <div class="note warn small hidden" id="cmAlignBanner" style="margin-bottom:12px">
+    <b>まず「重ねて確認」</b>：<span id="cmAlignMsgTop"></span>
+    <div class="row" style="margin-top:8px">
+      <button class="btn sm warn" id="cmAlignCheck">重ねて見る</button>
+      <button class="btn sm" id="cmAlignAdjust">ずれている → 調整する</button>
+      <button class="btn sm ok" id="cmAlignOk">一致している → 次へ</button>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="subcard">
+      <h3>左：自由落下 ─ 落下開始のコマを探す</h3>
+      <div class="row">
+        <button class="btn sm" data-cmstep="L,-10">⏪ −10</button>
+        <button class="btn sm" data-cmstep="L,-1">◀ −1</button>
+        <button class="btn sm" data-cmstep="L,1">＋1 ▶</button>
+        <button class="btn sm" data-cmstep="L,10">＋10 ⏩</button>
+      </div>
+      <div class="slider"><span>探す</span><input type="range" data-cmscrub="L" min="0" max="1" step="0.001" value="0"><span class="v" data-cmscrubv="L">0</span></div>
+      <button class="btn primary wide" data-cmset="L">ここを開始点に設定</button>
+      <div class="row" style="margin-top:10px"><span class="small">微調整</span>
+        <button class="btn sm" data-cmadj="L,-1">−1コマ</button>
+        <button class="btn sm" data-cmadj="L,1">＋1コマ</button>
+        <span class="mut small">開始点 <b data-sf2="L">0</b> コマ（<b data-st2="L">0.000</b> s）</span></div>
+    </div>
+    <div class="subcard">
+      <h3>右：斜方投射 ─ 最高点のコマを探す</h3>
+      <div class="row">
+        <button class="btn sm" data-cmstep="R,-10">⏪ −10</button>
+        <button class="btn sm" data-cmstep="R,-1">◀ −1</button>
+        <button class="btn sm" data-cmstep="R,1">＋1 ▶</button>
+        <button class="btn sm" data-cmstep="R,10">＋10 ⏩</button>
+      </div>
+      <div class="slider"><span>探す</span><input type="range" data-cmscrub="R" min="0" max="1" step="0.001" value="0"><span class="v" data-cmscrubv="R">0</span></div>
+      <button class="btn primary wide" data-cmset="R">ここを開始点に設定</button>
+      <div class="row" style="margin-top:10px"><span class="small">微調整</span>
+        <button class="btn sm" data-cmadj="R,-1">−1コマ</button>
+        <button class="btn sm" data-cmadj="R,1">＋1コマ</button>
+        <span class="mut small">開始点 <b data-sf2="R">0</b> コマ（<b data-st2="R">0.000</b> s）</span></div>
+    </div>
+  </div>
+  <p class="mut small" style="margin-bottom:0">最高点は「上向きの動きが止まって下向きに変わる直前のコマ」です。左右どちらも設定すると、シークバーの 0 が両方の開始点になります。</p>
+</div>
+
+<div class="tabpane hidden" data-pane="compare:align">
+  <p class="mut small" style="margin-top:0"><b>大きさ</b>は左右でそろえる必要があります（ずれると落下距離の比そのものが変わります）。
+    いっぽう<b>上下の位置</b>は自由にずらしてかまいません。最高点と落下開始を同じ高さに持ってくるための操作です。</p>
+  <div class="row">
+    <button class="btn" id="cmMarkToggle">開始位置マーカーを出す</button>
+    <span class="mut small">左＝落下開始の瞬間の物体の高さ、右＝最高点の物体の高さ に、ピンクの線を合わせます</span>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn primary" id="cmAlignY">この高さをそろえる</button>
+    <button class="btn" id="cmMarkRuler">この高さを目盛りの 0 にする</button>
+    <span class="mut small" id="cmAlignMsg"></span>
+  </div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="subcard"><h3>左の映像を上下に動かす</h3>
+      <div class="row">
+        <button class="btn sm" data-cmny="L,-2">▲ 大きく</button><button class="btn sm" data-cmny="L,-0.4">▲ 少し</button>
+        <button class="btn sm" data-cmny="L,0.4">▼ 少し</button><button class="btn sm" data-cmny="L,2">▼ 大きく</button>
+        <span class="mut small">ずらし量 <b data-cmnyv="L">0.0</b> %</span></div></div>
+    <div class="subcard"><h3>右の映像を上下に動かす</h3>
+      <div class="row">
+        <button class="btn sm" data-cmny="R,-2">▲ 大きく</button><button class="btn sm" data-cmny="R,-0.4">▲ 少し</button>
+        <button class="btn sm" data-cmny="R,0.4">▼ 少し</button><button class="btn sm" data-cmny="R,2">▼ 大きく</button>
+        <span class="mut small">ずらし量 <b data-cmnyv="R">0.0</b> %</span></div></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <label><input type="checkbox" id="cmDragMove"> 映像を直接ドラッグして上下に動かす</label>
+    <button class="btn sm" id="cmResetY">上下位置をリセット</button>
+  </div>
+  <p class="mut small" style="margin-bottom:0">そろえたあと「表示」タブで目盛りを出すと、開始点から 1 : 4 : 9 : 16 の位置に両方の物体が同時に来ることを確かめられます。</p>
+</div>
+
+<div class="tabpane hidden" data-pane="compare:view">
+  <div class="row"><span>並べ方</span>
+    <div class="seg sm" id="cmLayoutSeg">
+      <button data-layout="side" class="on">左右に並べる</button>
+      <button data-layout="stack">上下に並べる</button>
+      <button data-layout="over">半透明で重ねる</button>
+    </div></div>
+  <div class="slider" id="cmOvopRow"><span>重ねの濃さ</span>
+    <input type="range" id="cmOvop" min="0.1" max="1" step="0.05" value="0.5"><span class="v" id="cmOvopV">50%</span></div>
+  <div class="row" style="margin-top:10px"><span>画面の切り取り</span>
+    <select id="cmFitSel">
+      <option value="full">全体を表示</option><option value="3:4">縦長 3:4</option><option value="9:16">縦長 9:16</option>
+    </select>
+    <span class="mut small">鉛直方向の運動なので、縦長に切ると大きく見えます</span></div>
+  <h3>水平ガイド線</h3>
+  <div class="row">
+    <button class="btn" id="cmGuideToggle">ガイド線を表示</button>
+    <button class="btn sm" id="cmGuideAdd">＋ 線を追加</button>
+    <button class="btn sm" id="cmGuideClear">全部消す</button>
+    <span class="mut small">線は上下にドラッグできます（最大3本）</span></div>
+  <h3>落下距離の目盛り（1 : 4 : 9 : 16）</h3>
+  <div class="row">
+    <button class="btn" id="cmRulerToggle">目盛りを表示</button>
+    <span class="mut small">「0」の線を物体の位置に合わせ、「1」の線をドラッグして間隔を決めます</span></div>
+  <p class="mut small" style="margin-bottom:0">授業では「予想 → 再生 → 確認」の順に。まず何も出さずに予想させ、再生してから目盛りを重ねると効果的です。</p>
+</div>
+
+<div class="tabpane hidden" data-pane="compare:adjust">
+  <p class="mut small" style="margin-top:0">1本の動画を左右に使っている場合は撮影条件が同一なので、通常この調整は不要です。</p>
+  <div class="grid2">
+    <div class="subcard"><h3>左の映像</h3>
+      <div class="slider"><span>大きさ</span><input type="range" data-cmsc="L" min="0.5" max="2" step="0.005" value="1"><span class="v" data-cmscv="L">1.000</span></div>
+      <div class="slider"><span>上下</span><input type="range" data-cmoy="L" min="-100" max="100" step="0.2" value="0"><span class="v" data-cmoyv="L">0.0%</span></div>
+      <div class="slider"><span>左右</span><input type="range" data-cmpx="L" min="0" max="1" step="0.01" value="0.5"><span class="v" data-cmpxv="L">50%</span></div></div>
+    <div class="subcard"><h3>右の映像</h3>
+      <div class="slider"><span>大きさ</span><input type="range" data-cmsc="R" min="0.5" max="2" step="0.005" value="1"><span class="v" data-cmscv="R">1.000</span></div>
+      <div class="slider"><span>上下</span><input type="range" data-cmoy="R" min="-100" max="100" step="0.2" value="0"><span class="v" data-cmoyv="R">0.0%</span></div>
+      <div class="slider"><span>左右</span><input type="range" data-cmpx="R" min="0" max="1" step="0.01" value="0.5"><span class="v" data-cmpxv="R">50%</span></div></div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn" id="cmResetAdjust">調整をリセット</button>
+    <label>再生方式
+      <select id="cmEngineSel">
+        <option value="seek">精密（1コマずつシーク・確実に同期）</option>
+        <option value="native">なめらか（通常再生＋自動補正）</option>
+      </select></label>
+  </div>
+  <p class="mut small" style="margin-bottom:0">「精密」は同期が確実ですが、端末によってはカクつきます。その場合は「なめらか」に切り替えるか、再生速度を ×1/4 などに落としてください。</p>
+</div>
+
+<div class="tabpane hidden" data-pane="compare:save">
+  <p class="mut small" style="margin-top:0">開始フレーム・fps・ガイド線の位置・調整値などを1つのファイルに書き出せます（動画そのものは含まれません）。調整済みの設定を生徒に配布できます。</p>
+  <div class="row">
+    <button class="btn primary" id="cmSaveJson">設定を書き出す（.json）</button>
+    <button class="btn" id="cmLoadJson">設定を読み込む</button>
+    <span class="mut small" id="cmSaveMsg"></span>
+  </div>
+</div>
+  </div><!-- /#panes -->
+</section>
+
+</div><!-- /wrap -->
+</div><!-- /#app -->
+
+<input type="file" id="libIn" accept="video/*" class="hidden">
+<input type="file" id="capIn" accept="video/*" capture="environment" class="hidden">
+<input type="file" id="jsonIn" accept=".json,application/json" class="hidden">
+
+<script>
+/* ========== 00-core.js ========== */
+/* =========================================================
+   共通コア — 両モードが使う土台
+   ここには「どちらのモードでも同じもの」だけを置きます。
+   モード固有の処理は 20-observe.js / 30-compare.js へ。
+   ========================================================= */
+var App = (function(){
+'use strict';
+var A = {};
+
+/* ---------- ちいさな道具 ---------- */
+A.$  = function(s,r){return (r||document).querySelector(s);};
+A.$$ = function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));};
+A.clamp = function(v,a,b){return Math.max(a,Math.min(b,v));};
+A.f3 = function(x){return (Math.round(x*1000)/1000).toFixed(3);};
+A.vib = function(ms){try{if(navigator.vibrate)navigator.vibrate(ms||6);}catch(e){}};
+A.show = function(sel,on){var e=(typeof sel==='string')?A.$(sel):sel; if(e)e.classList.toggle('hidden',!on);};
+
+var toastT=null;
+A.toast = function(msg,ms){
+  var el=A.$('#toast');
+  if(!el){el=document.createElement('div');el.id='toast';el.className='toast';document.body.appendChild(el);}
+  el.innerHTML=msg; el.style.display='block';
+  clearTimeout(toastT); toastT=setTimeout(function(){el.style.display='none';},ms||2800);
+};
+A.download = function(name,obj){
+  var blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+};
+
+/* ---------- 状態 ---------- */
+A.S = {fps:60, mode:'observe', rate:1, engine:'seek', playing:false, s:0};
+
+/* ---------- コマと時刻 ----------
+   映像側の時刻は「コマ境界（f/fps）」で返る場合と、こちらが指定した
+   「コマ中央（(f+0.5)/fps）」の場合があり、さらに webm などは
+   ミリ秒に丸められる。+0.3 の余裕を持たせて、どちらでも同じコマ番号にする。 */
+A.FT = function(f){return (f+0.5)/A.S.fps;};
+A.TF = function(t){return Math.max(0,Math.floor(t*A.S.fps+0.3));};
+A.setFps = function(nf, framesToKeep){
+  (framesToKeep||[]).forEach(function(o){
+    if(o.obj[o.key]!=null) o.obj[o.key]=Math.max(0,Math.round(A.FT(o.obj[o.key])*nf-0.5));
+  });
+  A.S.fps=nf;
+  A.emit('fps');
+};
+
+/* ---------- ちいさなイベント ---------- */
+var subs={};
+A.on = function(k,fn){(subs[k]=subs[k]||[]).push(fn);};
+A.emit = function(k,a){(subs[k]||[]).forEach(function(f){f(a);});};
+
+/* ---------- プレーヤー ---------- */
+A.players = {};
+A.P = function(id){return A.players[id];};
+A.mkPlayer = function(id){
+  var p={id:id,
+    vp:A.$('[data-vp="'+id+'"]'), video:A.$('[data-video="'+id+'"]'), ovl:A.$('[data-ovl="'+id+'"]'),
+    url:null,file:null,name:'',ready:false,previewing:false,mediaTime:null,
+    startFrame:0,scale:1,offsetY:0,panX:0.5,panX2:0};
+  p.video.addEventListener('loadedmetadata',function(){
+    p.ready=true; clearTimeout(p._t);
+    if(p.video.videoWidth&&p.video.videoHeight) p.ar=p.video.videoWidth/p.video.videoHeight;
+    if(p.video.requestVideoFrameCallback){
+      var cb=function(n,m){p.mediaTime=m.mediaTime;p.video.requestVideoFrameCallback(cb);};
+      p.video.requestVideoFrameCallback(cb);
+    }
+    A.emit('loaded',p);
+  });
+  p.video.addEventListener('error',function(){clearTimeout(p._t);A.codecHelp(p.name);});
+  A.players[id]=p;
+  return p;
+};
+A.loadInto = function(id,file){
+  var p=A.P(id); if(!p||!file)return;
+  if(p.url){try{URL.revokeObjectURL(p.url);}catch(e){}}
+  p.url=URL.createObjectURL(file); p.file=file; p.name=file.name;
+  p.ready=false; p.mediaTime=null; p.startFrame=0;
+  p.video.src=p.url; p.video.load();
+  clearTimeout(p._t);
+  p._t=setTimeout(function(){if(!p.ready)A.codecHelp(p.name);},9000);
+};
+A.codecHelp = function(name){
+  A.toast('この動画をブラウザで開けませんでした。'+
+    (/\.mov$/i.test(name||'')?'iPhone の「高効率(HEVC)」形式かもしれません。':'')+
+    ' 設定→カメラ→フォーマット→「互換性優先」で撮り直すか、Safari でお試しください。',7000);
+};
+A.isVideoFile = function(f){
+  return !!f && (/^video\//.test(f.type)||/\.(mp4|mov|m4v|webm|ogg|avi|3gp)$/i.test(f.name));
+};
+/* 映像の拡大・上下左右のずらし（カメラ用の追加移動量 extraX は % ） */
+A.applyTransform = function(p,extraX,flipAboutX){
+  if(!p)return;
+  var t='';
+  if(flipAboutX!=null){
+    p.video.style.transformOrigin=(flipAboutX*100)+'% 50%';
+    t='scaleX(-1)';
+  }else{
+    p.video.style.transformOrigin='50% 50%';
+    t='translate('+((extraX||0))+'%,'+p.offsetY+'%) scale('+p.scale+')';
+  }
+  p.video.style.transform=t;
+  p.video.style.objectPosition=(p.panX*100)+'% 50%';
+};
+
+/* ---------- モード登録 ---------- */
+A.modes = {};
+A.registerMode = function(id,m){A.modes[id]=m;};
+A.mode = function(){return A.modes[A.S.mode]||{};};
+A.sMax = function(){var m=A.mode();return m.sMax?Math.max(0,m.sMax()):0;};
+
+/* ---------- 仮想時計（2つの映像をそろえる心臓部） ----------
+   video を2つ play() すると必ずずれるので、共通の時計をひとつ持ち、
+   毎フレーム各 video の currentTime を代入して合わせる。 */
+var lastTS=0, tick=0;
+A.setPlaying = function(on){
+  if(on&&A.sMax()<=0) return;
+  A.S.playing=on; lastTS=0;
+  Object.keys(A.players).forEach(function(k){
+    var p=A.players[k]; if(!p.ready)return;
+    if(on&&A.S.engine==='native'&&A.mode().allowNative){
+      try{p.video.playbackRate=Math.max(0.0625,A.S.rate);}catch(e){}
+      var pr=p.video.play(); if(pr&&pr.catch)pr.catch(function(){});
+    } else p.video.pause();
+  });
+  A.emit('playing',on);
+};
+A.togglePlay = function(){
+  if(!A.S.playing&&A.S.s>=A.sMax()-1e-6)A.S.s=0;
+  A.setPlaying(!A.S.playing);
+};
+A.step = function(n){
+  A.setPlaying(false);
+  if(A.mode().step){A.mode().step(n);return;}
+  A.S.s=A.clamp(A.S.s+n/A.S.fps,0,A.sMax());
+};
+A.seekTo = function(p,target){
+  if(!p.ready||!isFinite(p.video.duration))return;
+  var v=p.video;
+  target=A.clamp(target,0,Math.max(0,v.duration-1e-3));
+  if(A.S.engine==='native'&&A.S.playing&&A.mode().allowNative){
+    if(!v.seeking&&Math.abs(v.currentTime-target)>2/A.S.fps)v.currentTime=target;
+  }else{
+    if(v.seeking)return;
+    if(Math.abs(v.currentTime-target)>0.5/A.S.fps)v.currentTime=target;
+  }
+};
+function frame(ts){
+  var m=A.mode();
+  if(A.S.playing){
+    if(!lastTS)lastTS=ts;
+    var dt=(ts-lastTS)/1000; lastTS=ts;
+    A.S.s+=dt*A.S.rate;
+    var mx=A.sMax();
+    if(A.S.s>=mx){A.S.s=mx;A.setPlaying(false);}
+  } else lastTS=0;
+  if(m.timeFor){
+    Object.keys(A.players).forEach(function(k){
+      var p=A.players[k];
+      if(!p.ready||p.previewing)return;
+      var t=m.timeFor(k);
+      if(t!=null)A.seekTo(p,t);
+    });
+  }
+  if((tick++ % 2)===0){
+    A.emit('readout');
+    if(m.onFrame)m.onFrame();
+  }
+  requestAnimationFrame(frame);
+}
+A.startClock=function(){requestAnimationFrame(frame);};
+
+/* ---------- ドラッグ ---------- */
+function dragBase(ev,el,cb,axis){
+  ev.preventDefault(); ev.stopPropagation();
+  function mv(e){
+    var r=el.getBoundingClientRect();
+    cb(A.clamp(axis==='x'?(e.clientX-r.left)/r.width:(e.clientY-r.top)/r.height,0,1));
+  }
+  function up(){
+    window.removeEventListener('pointermove',mv);
+    window.removeEventListener('pointerup',up);
+    window.removeEventListener('pointercancel',up);
+  }
+  window.addEventListener('pointermove',mv);
+  window.addEventListener('pointerup',up);
+  window.addEventListener('pointercancel',up);
+  mv(ev);
+}
+A.dragX=function(ev,el,cb){dragBase(ev,el,cb,'x');};
+A.dragY=function(ev,el,cb){dragBase(ev,el,cb,'y');};
+
+/* 横になぞってコマ送り（PCのマウスでも効く） */
+A.PX_PER_FRAME = 11;
+A.attachJog = function(el,cb){
+  var on=false,x0=0,acc=0;
+  el.addEventListener('pointerdown',function(e){
+    if(A.isOverlayEl(e.target))return;
+    on=true;x0=e.clientX;acc=0;el.classList.add('active');
+    try{el.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  el.addEventListener('pointermove',function(e){
+    if(!on)return;
+    var dx=e.clientX-x0, n=(dx<0?Math.ceil(dx/A.PX_PER_FRAME):Math.floor(dx/A.PX_PER_FRAME));
+    if(n!==acc){cb(n-acc);acc=n;A.vib(4);}
+  });
+  ['pointerup','pointercancel'].forEach(function(ev){
+    el.addEventListener(ev,function(){on=false;el.classList.remove('active');});
+  });
+};
+A.isOverlayEl = function(t){
+  return !!t&&t.classList&&(t.classList.contains('hline')||t.classList.contains('vline'));
+};
+/* 映像の上での指の動き：横＝コマ送り、縦＝（許可されていれば）映像を上下に動かす */
+A.attachStageGesture = function(p,opt){
+  var g={on:false,axis:null,x0:0,y0:0,acc:0,base:0,extra:0};
+  p.vp.addEventListener('pointerdown',function(e){
+    if(A.isOverlayEl(e.target))return;
+    if(opt.armed&&opt.armed())return;   /* クリックで位置を取る最中は何もしない */
+    g.on=true;g.axis=null;g.x0=e.clientX;g.y0=e.clientY;g.acc=0;
+    g.base=p.offsetY; g.extra=opt.onDragYStart?opt.onDragYStart():0;
+    try{p.vp.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  p.vp.addEventListener('pointermove',function(e){
+    if(!g.on)return;
+    var dx=e.clientX-g.x0, dy=e.clientY-g.y0;
+    if(!g.axis){
+      if(Math.abs(dx)<9&&Math.abs(dy)<9)return;
+      g.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
+    }
+    if(g.axis==='x'&&opt.onJog){
+      var n=(dx<0?Math.ceil(dx/A.PX_PER_FRAME):Math.floor(dx/A.PX_PER_FRAME));
+      if(n!==g.acc){opt.onJog(n-g.acc);g.acc=n;A.vib(4);}
+    }else if(g.axis==='y'&&opt.onDragY){
+      var r=p.vp.getBoundingClientRect();
+      opt.onDragY(g.base+dy/r.height*100, g.extra+dy/r.height, g.base, g.extra);
+    }
+  });
+  ['pointerup','pointercancel'].forEach(function(ev){
+    p.vp.addEventListener(ev,function(){g.on=false;g.axis=null;});
+  });
+};
+
+/* ---------- オーバーレイ（線・点） ---------- */
+A.ov = {
+  clear:function(p){p.ovl.innerHTML='';},
+  el:function(p,cls,tagText){
+    var d=document.createElement('div'); d.className=cls;
+    if(tagText){var s=document.createElement('span');s.className='tag';s.textContent=tagText;d.appendChild(s);}
+    p.ovl.appendChild(d); return d;
+  },
+  arm:function(on){Object.keys(A.players).forEach(function(k){
+    A.players[k].ovl.classList.toggle('noev',!!on);
+    A.players[k].vp.classList.toggle('crosshair',!!on);
+  });}
+};
+
+/* ---------- 画面のスリープ防止 ---------- */
+var wl=null;
+A.keepAwake=function(){
+  try{ if('wakeLock' in navigator && !wl){
+    navigator.wakeLock.request('screen').then(function(x){wl=x;x.addEventListener('release',function(){wl=null;});},function(){});
+  }}catch(e){}
+};
+
+return A;
+})();
+
+/* ========== 10-shell.js ========== */
+/* =========================================================
+   アプリの外枠 — モード切替・動画の読み込み・タブ・操作バー
+   モードは { players, zones(), onFile(), tabs, enter(), onReady(),
+   sMax(), timeFor(), readout(), step(), onFrame() } を実装します。
+   ========================================================= */
+(function(A){
+'use strict';
+var $=A.$, $$=A.$$;
+
+/* ---------- プレーヤーを作る ---------- */
+['O1','O2','L','R'].forEach(A.mkPlayer);
+
+/* ---------- モード ---------- */
+A.setMode = function(id){
+  var prev=A.modes[A.S.mode];
+  if(prev&&prev.leave)prev.leave();
+  A.setPlaying(false);
+  A.S.mode=id; A.S.s=0;
+  $$('#modeSeg button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-mode')===id);});
+  var m=A.mode();
+  $('#loadTitle').textContent=m.loadTitle||'';
+  $('#loadLead').textContent=m.loadLead||'';
+  A.show('#tipsObserve',id==='observe');
+  A.show('#tipsCompare',id==='compare');
+  A.show('#cmpModeRow',id==='compare');
+  buildTabs();
+  refreshZones();
+  if(m.enter)m.enter();
+  A.show('#secStage',allReady());
+  if(allReady()&&m.onReady)m.onReady();
+  syncPanels();
+};
+$('#modeSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  A.setMode(b.getAttribute('data-mode'));
+});
+function needed(){return A.mode().players||[];}
+function allReady(){return needed().length>0&&needed().every(function(id){return A.P(id).ready;});}
+function syncPanels(){
+  var use=needed();
+  $$('.panel').forEach(function(el){
+    el.classList.toggle('off',use.indexOf(el.getAttribute('data-side'))<0);
+  });
+}
+A.syncPanels=syncPanels;
+
+/* ---------- タブ ---------- */
+function buildTabs(){
+  var m=A.mode(), box=$('#tabs');
+  box.innerHTML='';
+  (m.tabs||[]).forEach(function(t){
+    var b=document.createElement('button');
+    b.textContent=t.label; b.setAttribute('data-tab',t.id);
+    box.appendChild(b);
+  });
+  if(m.tabs&&m.tabs.length)A.setTab(m.tabs[0].id);
+}
+A.setTab=function(id){
+  var m=A.mode();
+  A.S.tab=id;
+  $$('#tabs button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-tab')===id);});
+  $$('#panes .tabpane').forEach(function(p){
+    p.classList.toggle('hidden',p.getAttribute('data-pane')!==(A.S.mode+':'+id));
+  });
+  if(m.onTab)m.onTab(id);
+};
+$('#tabs').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  var m=A.mode(), id=b.getAttribute('data-tab');
+  if(m.canOpenTab&&!m.canOpenTab(id))return;
+  A.setTab(id);
+});
+
+/* ---------- 動画の読み込み ---------- */
+function refreshZones(){
+  var z=(A.mode().zones?A.mode().zones():[]);
+  $$('.zone').forEach(function(el){
+    el.classList.toggle('hidden',z.indexOf(el.getAttribute('data-target'))<0);
+  });
+  $('#zones').classList.toggle('two',z.length>1);
+}
+A.refreshZones=refreshZones;
+var pendingTarget=null;
+$$('[data-lib]').forEach(function(b){b.addEventListener('click',function(){
+  pendingTarget=b.getAttribute('data-lib'); $('#libIn').click();});});
+$$('[data-cap]').forEach(function(b){b.addEventListener('click',function(){
+  pendingTarget=b.getAttribute('data-cap'); $('#capIn').click();});});
+['libIn','capIn'].forEach(function(id){
+  $('#'+id).addEventListener('change',function(e){
+    var f=e.target.files&&e.target.files[0]; e.target.value='';
+    if(f)takeFile(pendingTarget,f);
+  });
+});
+function takeFile(target,file){
+  if(!A.isVideoFile(file)){A.toast('動画ファイルを選んでください。');return;}
+  var el=document.querySelector('[data-name="'+target+'"]');
+  if(el)el.textContent='読み込み中… '+file.name;
+  if(A.mode().onFile)A.mode().onFile(target,file);
+}
+A.takeFile=takeFile;
+var dbox=$('#dropbox');
+['dragenter','dragover'].forEach(function(ev){
+  dbox.addEventListener(ev,function(e){e.preventDefault();dbox.classList.add('over');});});
+['dragleave','drop'].forEach(function(ev){
+  dbox.addEventListener(ev,function(e){e.preventDefault();dbox.classList.remove('over');});});
+dbox.addEventListener('drop',function(e){
+  var files=e.dataTransfer.files; if(!files||!files.length)return;
+  var zone=e.target.closest?e.target.closest('.zone'):null;
+  var zs=(A.mode().zones?A.mode().zones():[]);
+  var tgt=zone?zone.getAttribute('data-target'):zs[0];
+  if(files.length>=2&&zs.length>=2){takeFile(zs[0],files[0]);takeFile(zs[1],files[1]);}
+  else takeFile(tgt,files[0]);
+});
+A.on('loaded',function(p){
+  var el=document.querySelector('[data-name="'+(A.mode().nameSlot?A.mode().nameSlot(p.id):p.id)+'"]');
+  if(el)el.textContent='✓ '+p.name;
+  ['O1','O2','L','R'].forEach(function(id){
+    var q=A.P(id); if(q.ready&&q.ar)q.vp.style.aspectRatio=String(q.ar);
+  });
+  if(allReady()){
+    A.show('#secStage',true);
+    if(A.mode().onReady)A.mode().onReady();
+  }
+  syncPanels();
+});
+
+/* ---------- fps ---------- */
+$('#fpsSel').addEventListener('change',function(e){
+  var nf=parseInt(e.target.value,10), keep=[];
+  Object.keys(A.players).forEach(function(k){keep.push({obj:A.players[k],key:'startFrame'});});
+  if(A.mode().fpsKeep)keep=keep.concat(A.mode().fpsKeep());
+  A.setFps(nf,keep);
+  fpsHint();
+});
+function fpsHint(){$('#fpsHint').textContent='1コマ ＝ '+A.f3(1/A.S.fps)+' 秒';}
+A.fpsHint=fpsHint;
+
+/* ---------- 操作バー ---------- */
+$('#btnPlay').addEventListener('click',A.togglePlay);
+$('#btnHead').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;if(A.mode().onHead)A.mode().onHead();});
+$$('[data-step]').forEach(function(b){
+  b.addEventListener('click',function(){A.step(parseInt(b.getAttribute('data-step'),10));A.vib();});
+});
+$('#seek').addEventListener('input',function(){
+  if(A.mode().onSeek)A.mode().onSeek();
+  A.S.s=A.clamp(parseFloat(this.value)||0,0,A.sMax());
+});
+$('#rateSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  A.S.rate=parseFloat(b.getAttribute('data-rate'));
+  $$('#rateSeg button').forEach(function(x){x.classList.toggle('on',x===b);});
+  if(A.S.playing&&A.S.engine==='native'){
+    Object.keys(A.players).forEach(function(k){
+      var p=A.players[k]; if(p.ready){try{p.video.playbackRate=Math.max(0.0625,A.S.rate);}catch(err){}}});
+  }
+});
+A.on('playing',function(on){
+  $('#btnPlay').textContent=on?'⏸ 一時停止':'▶ 再生';
+  $('#btnPlay').classList.toggle('warn',on);
+  $('#btnPlay').classList.toggle('primary',!on);
+  if(on)A.keepAwake();
+});
+A.attachJog($('#jog'),function(d){A.step(d);});
+document.addEventListener('keydown',function(e){
+  var t=(e.target.tagName||'').toLowerCase();
+  if(t==='input'||t==='select'||t==='textarea'||e.target.isContentEditable)return;
+  var n=e.shiftKey?10:1;
+  if(e.key==='ArrowRight'){e.preventDefault();A.step(n);}
+  else if(e.key==='ArrowLeft'){e.preventDefault();A.step(-n);}
+  else if(e.key===' '||e.key==='Spacebar'){e.preventDefault();A.togglePlay();}
+  else if(e.key==='Escape'&&A.mode().onEscape)A.mode().onEscape();
+});
+
+/* ---------- 表示の更新 ---------- */
+A.on('readout',function(){
+  Object.keys(A.players).forEach(function(k){
+    var p=A.players[k]; if(!p.ready)return;
+    var el=document.querySelector('[data-fnum="'+k+'"]'); if(!el)return;
+    var ct=(p.mediaTime!=null&&!p.video.seeking)?p.mediaTime:p.video.currentTime;
+    el.textContent=A.TF(ct)+' コマ';
+  });
+  var mx=A.sMax(), sk=$('#seek');
+  sk.max=String(mx||1); sk.step=String(1/A.S.fps);
+  if(document.activeElement!==sk)sk.value=String(A.clamp(A.S.s,0,mx||1));
+  var r=A.mode().readout?A.mode().readout():null;
+  if(r){$('#seekLab').textContent=r.label;$('#tRead').innerHTML=r.text;}
+});
+document.addEventListener('visibilitychange',function(){
+  if(document.visibilityState!=='visible')A.setPlaying(false);
+});
+window.addEventListener('beforeunload',function(){
+  Object.keys(A.players).forEach(function(k){
+    var p=A.players[k]; if(p.url){try{URL.revokeObjectURL(p.url);}catch(e){}}});
+});
+})(App);
+
+/* ========== 20-observe.js ========== */
+/* =========================================================
+   ① 斜方投射を観る
+     水平：Δt ごとの等間隔の縦線／追いかけカメラ
+     鉛直：最高点を軸にしたミラー再生（下り +t と 上りの逆再生 −t）
+   ========================================================= */
+(function(A){
+'use strict';
+var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
+
+var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,
+  x1:null,y1:null,x2:null,y2:null,sMark:0,arm:0,
+  showGrid:false,showPred:false,camOn:false,vx:0,vxAuto:0,
+  mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4};
+A.O=O;
+var P1=function(){return A.P('O1');}, P2=function(){return A.P('O2');};
+
+function ready3(){return O.fStart!=null&&O.fApex!=null&&O.fEnd!=null&&O.fStart<O.fApex&&O.fApex<O.fEnd;}
+function dtSec(){return O.dtF/A.S.fps;}
+
+/* ---------- Δt（時間のものさし） ---------- */
+var DT_OPTS=[1,2,3,4,5,6,8,10,12,15,20,24,30,40,60];
+function nearestDt(n){var b=DT_OPTS[0];DT_OPTS.forEach(function(o){if(Math.abs(o-n)<Math.abs(b-n))b=o;});return b;}
+function defaultDt(){return Math.max(1,Math.round(A.S.fps/30));}
+/* 飛んでいる時間を10等分するあたりが、縦線がいちばん読みやすい */
+function suggestDt(){
+  if(!ready3())return defaultDt();
+  return nearestDt(Math.max(1,Math.round((A.FT(O.fEnd)-A.FT(O.fStart))/10*A.S.fps)));
+}
+function fillDt(){
+  var sel=$('#obDtSel'); if(!sel)return;
+  sel.innerHTML='';
+  DT_OPTS.concat(DT_OPTS.indexOf(O.dtF)<0?[O.dtF]:[]).forEach(function(n){
+    var o=document.createElement('option');o.value=String(n);o.textContent=n+' コマ';sel.appendChild(o);
+  });
+  sel.value=String(O.dtF);
+  $('#obDtRead').textContent=O.dtF+' コマ ＝ '+f3(dtSec())+' 秒';
+}
+$('#obDtSel').addEventListener('change',function(e){
+  O.dtF=parseInt(e.target.value,10);O.dtTouched=true;fillDt();resetMeasure();
+});
+
+/* ---------- 区間 ---------- */
+$$('[data-mark]').forEach(function(b){
+  b.addEventListener('click',function(){
+    if(A.S.mode!=='observe')return;
+    O[b.getAttribute('data-mark')]=A.TF(P1().ready?P1().video.currentTime:0);
+    refreshRange();
+  });
+});
+function refreshRange(){
+  [['fStart','#obVStart','#obN1'],['fApex','#obVApex','#obN2'],['fEnd','#obVEnd','#obN3']].forEach(function(a){
+    var v=O[a[0]];
+    $(a[1]).textContent=(v==null)?'—':(v+' コマ / '+f3(A.FT(v))+' s');
+    $(a[2]).classList.toggle('done',v!=null);
+  });
+  var ok=ready3();
+  $('#obRangeDone').disabled=!ok;
+  $('#obRangeDone').textContent=ok?'決まった → 水平を見る':'3つとも決めてください';
+}
+$('#obRangeDone').addEventListener('click',function(){
+  if(!ready3()){A.toast('開始 → 最高点 → おわり の順（コマ番号が増える順）になるように選んでください。');return;}
+  A.setTab('h');
+});
+$('#obRangeReset').addEventListener('click',function(){O.fStart=O.fApex=O.fEnd=null;refreshRange();});
+
+/* ---------- 位置をはかる ---------- */
+function resetMeasure(){
+  O.x1=O.y1=O.x2=O.y2=null;O.arm=0;O.showGrid=false;O.showPred=false;O.camOn=false;O.vx=0;O.vxAuto=0;
+  $('#obMeas1v').textContent='—';$('#obMeas2v').textContent='—';
+  $('#obM1').classList.remove('done');$('#obM2').classList.remove('done');
+  $('#obMeas2').disabled=true;$('#obMeasOut').classList.add('hidden');
+  ['#obGrid','#obPred','#obCam'].forEach(function(s){$(s).disabled=true;$(s).classList.remove('ok');});
+  $('#obGrid').textContent='この間隔で縦線を引く';
+  $('#obPred').textContent='予想の位置を出す';
+  $('#obCam').textContent='カメラでボールを追う';
+  $('#obCamMsg').textContent='';
+  armUI(); paint();
+}
+function armUI(){A.ov.arm(O.arm>0);
+  $('#obMeas1').classList.toggle('warn',O.arm===1);
+  $('#obMeas2').classList.toggle('warn',O.arm===2);
+  $('#obApexPick').classList.toggle('warn',O.arm===3);
+}
+$('#obMeasReset').addEventListener('click',resetMeasure);
+$('#obMeas1').addEventListener('click',function(){O.arm=1;armUI();});
+$('#obMeas2').addEventListener('click',function(){O.arm=2;armUI();});
+$('#obApexPick').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;O.arm=3;armUI();});
+
+function pick(pid){
+  return function(e){
+    if(A.S.mode!=='observe'||!O.arm)return;
+    if(pid==='O2'&&O.arm!==3)return;
+    if(A.isOverlayEl(e.target))return;
+    var vp=A.P(pid).vp, r=vp.getBoundingClientRect();
+    var x=clamp((e.clientX-r.left)/r.width,0,1), y=clamp((e.clientY-r.top)/r.height,0,1);
+    if(O.arm===1){
+      O.x1=x;O.y1=y;O.sMark=A.S.s;O.arm=0;armUI();
+      $('#obMeas1v').textContent='① 横 '+(x*100).toFixed(1)+'%（'+Math.round(A.S.s*A.S.fps)+' コマ目）';
+      $('#obM1').classList.add('done');
+      A.S.s=clamp(O.sMark+dtSec(),0,mode.sMax());
+      var en=function(){$('#obMeas2').disabled=false;O.arm=2;armUI();};
+      var t=setTimeout(en,500);
+      P1().video.addEventListener('seeked',function h(){clearTimeout(t);P1().video.removeEventListener('seeked',h);en();});
+    }else if(O.arm===2){
+      O.x2=x;O.y2=y;O.arm=0;armUI();
+      $('#obMeas2v').textContent='② 横 '+(x*100).toFixed(1)+'%';
+      $('#obM2').classList.add('done');
+      finishMeasure();
+    }else if(O.arm===3){
+      O.apexX=x;O.arm=0;armUI();
+      $('#obApexV').textContent='横 '+(x*100).toFixed(1)+'%';
+    }
+    paint();
+  };
+}
+['O1','O2'].forEach(function(id){A.P(id).vp.addEventListener('pointerdown',pick(id));});
+
+function finishMeasure(){
+  var d=O.x2-O.x1;
+  O.vxAuto=d/dtSec(); O.vx=O.vxAuto;
+  $('#obMeasOut').classList.remove('hidden');
+  $('#obMeasOut').innerHTML='Δt ＝ <b>'+O.dtF+' コマ ＝ '+f3(dtSec())+' 秒</b> のあいだに、'+
+    'ボールは横に <b>画面幅の '+(Math.abs(d)*100).toFixed(1)+'%</b> 進みました。<br>'+
+    'つまり水平方向の速さは <b>'+Math.abs(O.vxAuto).toFixed(2)+' 画面幅/秒</b>。'+
+    'この速さがずっと変わらないなら、水平方向は等速直線運動です。';
+  ['#obGrid','#obPred','#obCam'].forEach(function(s){$(s).disabled=false;});
+  var cv=$('#obCamV'), lim=Math.max(0.2,Math.abs(O.vxAuto)*2.5);
+  cv.min=String(-lim); cv.max=String(lim); cv.value=String(O.vx);
+  $('#obCamVv').textContent=O.vx.toFixed(2);
+}
+$('#obGrid').addEventListener('click',function(){
+  O.showGrid=!O.showGrid; if(O.showGrid)O.camOn=false; syncHButtons(); paint();
+});
+$('#obPred').addEventListener('click',function(){O.showPred=!O.showPred;syncHButtons();paint();});
+$('#obCam').addEventListener('click',function(){
+  O.camOn=!O.camOn; if(O.camOn)O.showGrid=false;
+  $('#obCamMsg').textContent=O.camOn
+    ?'ボールが青い線の上を、まっすぐ上下するように速さを合わせてください。ひとつの速さで最後まで線に乗れば、水平方向は等速です。':'';
+  syncHButtons(); paint();
+});
+function syncHButtons(){
+  $('#obGrid').classList.toggle('ok',O.showGrid);
+  $('#obGrid').textContent=O.showGrid?'縦線を消す':'この間隔で縦線を引く';
+  $('#obPred').classList.toggle('ok',O.showPred);
+  $('#obPred').textContent=O.showPred?'予想の位置を消す':'予想の位置を出す';
+  $('#obCam').classList.toggle('ok',O.camOn);
+  $('#obCam').textContent=O.camOn?'カメラを止める':'カメラでボールを追う';
+}
+$('#obCamV').addEventListener('input',function(){
+  O.vx=parseFloat(this.value);$('#obCamVv').textContent=O.vx.toFixed(2);
+});
+$('#obCamAuto').addEventListener('click',function(){
+  O.vx=O.vxAuto;$('#obCamV').value=String(O.vx);$('#obCamVv').textContent=O.vx.toFixed(2);
+});
+
+/* ---------- ミラー再生 ---------- */
+$('#obMirSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  O.mir=b.getAttribute('data-m');
+  $$('#obMirSeg button').forEach(function(x){x.classList.toggle('on',x===b);});
+  setStage();
+});
+$('#obFlip').addEventListener('change',function(){O.flip=this.checked;paint();});
+$('#obOvop').addEventListener('input',function(){
+  O.ovop=parseFloat(this.value);$('#obOvopV').textContent=Math.round(O.ovop*100)+'%';setStage();
+});
+$('#obHG').addEventListener('click',function(){
+  O.showHG=!O.showHG;
+  this.classList.toggle('ok',O.showHG);
+  this.textContent=O.showHG?'高さの線を消す':'高さの線を出す';
+  paint();
+});
+
+/* ---------- 描画 ---------- */
+function setStage(){
+  var st=$('#stage'), tab=A.S.tab;
+  st.className='stage '+(tab==='v'?(O.mir==='over'?'over':'side'):'one');
+  st.style.setProperty('--ovop',String(O.ovop));
+  document.querySelector('.panel[data-side="O2"]').classList.toggle('off',tab!=='v');
+  document.querySelector('.panel[data-side="O2"]').classList.toggle('dim',tab==='v'&&O.mir==='over');
+  document.querySelector('[data-chip="O1"]').textContent=(tab==='v')?'下り（+t）':'映像';
+  paint();
+}
+function paint(){
+  ['O1','O2'].forEach(function(id){A.ov.clear(A.P(id));});
+  var tab=A.S.tab, p1=P1();
+  if(tab==='h'){
+    if(O.showGrid&&O.x1!=null&&O.x2!=null){
+      var d=O.x2-O.x1;
+      if(Math.abs(d)>0.004){
+        var a=Math.ceil((0-O.x1)/d), b=Math.floor((1-O.x1)/d);
+        if(a>b){var t=a;a=b;b=t;}
+        a=Math.max(a,-60); b=Math.min(b,60);
+        for(var k=a;k<=b;k++){
+          var x=O.x1+k*d; if(x<0||x>1)continue;
+          var el=A.ov.el(p1,'vline'+(k===0?' k0':''),k===0?'①':(k===1?'Δt':null));
+          el.style.left=(x*100)+'%';
+        }
+      }
+    }
+    if(O.camOn&&O.x1!=null)A.ov.el(p1,'vline cam').style.left=(O.x1*100)+'%';
+    if(!O.camOn&&O.x1!=null){var d1=A.ov.el(p1,'dot d1');d1.style.left=(O.x1*100)+'%';d1.style.top=(O.y1*100)+'%';}
+    if(!O.camOn&&O.x2!=null){var d2=A.ov.el(p1,'dot d2');d2.style.left=(O.x2*100)+'%';d2.style.top=(O.y2*100)+'%';}
+    if(O.showPred&&O.x1!=null)A.ov.el(p1,'tri');
+  }
+  if(tab==='v'){
+    ['O1','O2'].forEach(function(id){
+      var p=A.P(id);
+      var ax=A.ov.el(p,'vline axis','最高点');
+      /* 反転の軸は画面上の位置なので、どちらの映像で動かしても同じ値でよい */
+      ax.addEventListener('pointerdown',function(ev){
+        A.dragX(ev,p.vp,function(x){O.apexX=x;place();});
+      });
+      if(O.showHG){
+        var hg=A.ov.el(p,'hline guide');
+        hg.addEventListener('pointerdown',function(ev){A.dragY(ev,p.vp,function(y){O.hgY=y;place();});});
+      }
+    });
+  }
+  place();
+}
+function place(){
+  /* カメラのパンとミラーの反転 */
+  A.applyTransform(P1(),(A.S.tab==='h'&&O.camOn)?(-(O.vx*(A.S.s-O.sMark))*100):0);
+  A.applyTransform(P2(),0,(A.S.tab==='v'&&O.flip)?O.apexX:null);
+  if(A.S.tab==='h'){
+    var tri=P1().ovl.querySelector('.tri');
+    if(tri&&O.x1!=null){
+      var xp=O.x1+O.vxAuto*(A.S.s-O.sMark);
+      tri.style.left=clamp(xp,0,1)*100+'%';
+      tri.style.opacity=(xp<-0.02||xp>1.02)?'0':'1';
+    }
+  }
+  if(A.S.tab==='v'){
+    ['O1','O2'].forEach(function(id){
+      var o=A.P(id).ovl;
+      var ax=o.querySelector('.axis'); if(ax)ax.style.left=(O.apexX*100)+'%';
+      var hg=o.querySelector('.hline'); if(hg)hg.style.top=(O.hgY*100)+'%';
+    });
+  }
+}
+
+/* ---------- 保存・引き継ぎ ---------- */
+$('#obSave').addEventListener('click',function(){
+  A.download('shaho-kansatsu.json',{app:'projectile-lab',part:'observe',version:2,
+    fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
+    x1:O.x1,y1:O.y1,x2:O.x2,y2:O.y2,sMark:O.sMark,vx:O.vx,vxAuto:O.vxAuto,
+    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,name:P1().name});
+  $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
+});
+$('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jsonIn').click();});
+A.observeLoadJson=function(d){
+  if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
+  if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
+  ['fStart','fApex','fEnd','x1','y1','x2','y2','sMark','vx','vxAuto','apexX','hgY'].forEach(function(k){
+    if(d[k]!=null)O[k]=d[k];});
+  if(d.mir)O.mir=d.mir;
+  if(typeof d.flip==='boolean'){O.flip=d.flip;$('#obFlip').checked=d.flip;}
+  if(typeof d.ovop==='number'){O.ovop=d.ovop;$('#obOvop').value=String(d.ovop);$('#obOvopV').textContent=Math.round(d.ovop*100)+'%';}
+  fillDt(); refreshRange();
+  if(O.x1!=null&&O.x2!=null){
+    $('#obM1').classList.add('done');$('#obM2').classList.add('done');
+    $('#obMeas1v').textContent='① 横 '+(O.x1*100).toFixed(1)+'%';
+    $('#obMeas2v').textContent='② 横 '+(O.x2*100).toFixed(1)+'%';
+    finishMeasure();
+  }
+  syncHButtons(); setStage();
+  $('#obSaveMsg').textContent='読み込みました。動画は別途読み込んでください。';
+};
+$('#obHandoff').addEventListener('click',function(){
+  if(!P1().file){A.toast('先に動画を読み込んでください。');return;}
+  if(O.fApex==null){A.toast('先に「区間を決める」で最高点を決めてください。');return;}
+  A.handoffToCompare(P1().file,O.fApex);
+});
+
+/* ---------- モード定義 ---------- */
+var mode={
+  players:['O1','O2'],
+  allowNative:false,        /* 逆再生を含むので、必ずシークで同期する */
+  loadTitle:'斜方投射の動画を読み込む',
+  loadLead:'投げ上げたボールの動きを、水平方向と鉛直方向に分けて見ます。',
+  zones:function(){return ['O'];},
+  nameSlot:function(){return 'O';},
+  onFile:function(t,file){A.loadInto('O1',file);A.loadInto('O2',file);},
+  tabs:[{id:'range',label:'区間を決める'},{id:'h',label:'水平：等速か？'},
+        {id:'v',label:'鉛直：時間反転'},{id:'sum',label:'まとめ'}],
+  canOpenTab:function(id){
+    if((id==='h'||id==='v')&&!ready3()){
+      A.toast('先に「区間を決める」で、開始・最高点・おわりの3つを設定してください。');return false;
+    }
+    return true;
+  },
+  onTab:function(id){
+    A.setPlaying(false); A.S.s=0; O.arm=0; armUI();
+    if(id==='h'&&!O.dtTouched&&ready3()){
+      var nd=suggestDt(); if(nd!==O.dtF){O.dtF=nd;fillDt();resetMeasure();}
+    }
+    setStage();
+  },
+  fpsKeep:function(){return [{obj:O,key:'fStart'},{obj:O,key:'fApex'},{obj:O,key:'fEnd'}];},
+  sMax:function(){
+    if(!P1().ready)return 0;
+    if(A.S.tab==='range')return isFinite(P1().video.duration)?P1().video.duration:0;
+    if(!ready3())return 0;
+    if(A.S.tab==='v')return Math.min(A.FT(O.fApex)-A.FT(O.fStart),A.FT(O.fEnd)-A.FT(O.fApex));
+    return A.FT(O.fEnd)-A.FT(O.fStart);
+  },
+  timeFor:function(pid){
+    if(pid==='O1'){
+      if(A.S.tab==='range')return A.S.s;
+      if(A.S.tab==='v')return A.FT(O.fApex)+A.S.s;
+      return A.FT(O.fStart)+A.S.s;
+    }
+    if(pid==='O2'&&A.S.tab==='v')return A.FT(O.fApex)-A.S.s;
+    return null;
+  },
+  readout:function(){
+    var n=Math.round(A.S.s*A.S.fps);
+    if(A.S.tab==='range')return {label:'位置',text:A.TF(A.S.s)+' コマ / '+f3(A.S.s)+' s'};
+    if(A.S.tab==='v')return {label:'最高点から',text:'±'+f3(A.S.s)+' s（'+n+' コマ）'};
+    return {label:'開始から',text:'+'+f3(A.S.s)+' s（'+n+' コマ ＝ Δt×'+(A.S.s/dtSec()).toFixed(2)+'）'};
+  },
+  onFrame:place,
+  enter:function(){fillDt();refreshRange();syncHButtons();},
+  onReady:function(){A.S.s=0;setStage();}
+};
+A.registerMode('observe',mode);
+
+/* 映像の上で横になぞる＝コマ送り */
+['O1','O2'].forEach(function(id){
+  A.attachStageGesture(A.P(id),{
+    armed:function(){return A.S.mode==='observe'&&O.arm>0;},
+    onJog:function(d){if(A.S.mode==='observe')A.step(d);}
+  });
+});
+A.observeReset=resetMeasure;
+})(App);
+
+/* ========== 30-compare.js ========== */
+/* =========================================================
+   ② 自由落下とくらべる
+     左＝自由落下（落下開始）、右＝斜方投射（最高点）をそろえて同期再生。
+   ========================================================= */
+(function(A){
+'use strict';
+var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
+var SIDES=['L','R'];
+
+var C={cmode:'A',layout:'side',ovop:0.5,fit:'full',ar:16/9,
+  showGuides:false,showRuler:false,showMarks:false,
+  guides:[],gid:0,ruler:{y0:0.20,u:0.045},marks:{L:0.40,R:0.40},
+  dragMove:false,activeSide:null,alignDone:false};
+A.C=C;
+function PL(s){return A.P(s);}
+function startTime(p){return A.FT(p.startFrame);}
+function maxT(){
+  var m=Infinity;
+  SIDES.forEach(function(s){var p=PL(s);
+    if(p.ready&&isFinite(p.video.duration))m=Math.min(m,Math.max(0,p.video.duration-startTime(p)));});
+  return isFinite(m)?m:0;
+}
+function bothReady(){return PL('L').ready&&PL('R').ready;}
+function clearPreview(){SIDES.forEach(function(s){PL(s).previewing=false;});}
+
+/* ---------- モードA / B ---------- */
+$('#cmpModeSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  C.cmode=b.getAttribute('data-cmode');
+  $$('#cmpModeSeg button').forEach(function(x){x.classList.toggle('on',x===b);});
+  $('#cmpModeHint').textContent=(C.cmode==='A')
+    ?'同じ動画を左右に読み込み、別々の開始フレームを指定します（スケールのずれが起きません）'
+    :'別々に撮影した2本の動画を左右に読み込みます';
+  A.refreshZones();
+});
+
+/* ---------- 開始点をさがす ---------- */
+function previewSeek(p,time){
+  if(!p.ready)return;
+  A.setPlaying(false); p.previewing=true;
+  p.video.currentTime=clamp(time,0,Math.max(0,p.video.duration-1e-3));
+}
+function setActive(s){
+  C.activeSide=s;
+  $$('.panel').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-side')===s);});
+}
+$$('[data-cmstep]').forEach(function(b){
+  b.addEventListener('click',function(){
+    var a=b.getAttribute('data-cmstep').split(','), p=PL(a[0]);
+    if(!p.ready)return; setActive(a[0]);
+    var base=p.previewing?p.video.currentTime:startTime(p)+A.S.s;
+    previewSeek(p,A.FT(A.TF(base)+parseInt(a[1],10)));
+  });
+});
+$$('[data-cmscrub]').forEach(function(r){
+  r.addEventListener('input',function(){
+    var s=r.getAttribute('data-cmscrub'), p=PL(s); if(!p.ready)return;
+    setActive(s); previewSeek(p,parseFloat(r.value)||0);
+  });
+});
+$$('[data-cmset]').forEach(function(b){
+  b.addEventListener('click',function(){
+    var s=b.getAttribute('data-cmset'), p=PL(s); if(!p.ready)return;
+    p.startFrame=A.TF(p.previewing?p.video.currentTime:startTime(p)+A.S.s);
+    p.previewing=false; A.S.s=0; clearPreview(); A.setPlaying(false); A.vib(20);
+    b.textContent='設定しました ✓';
+    setTimeout(function(){b.textContent='ここを開始点に設定';},1200);
+  });
+});
+$$('[data-cmadj]').forEach(function(b){
+  b.addEventListener('click',function(){
+    var a=b.getAttribute('data-cmadj').split(','), p=PL(a[0]); if(!p.ready)return;
+    p.startFrame=Math.max(0,p.startFrame+parseInt(a[1],10));
+    p.previewing=false; A.setPlaying(false);
+  });
+});
+
+/* ---------- そろえる（上下） ---------- */
+function nudgeY(s,d){
+  var p=PL(s);
+  p.offsetY=clamp(p.offsetY+d,-100,100);
+  C.marks[s]=clamp(C.marks[s]+d/100,0,1);
+  syncAdjust(); applyFit(); place();
+}
+$$('[data-cmny]').forEach(function(b){
+  b.addEventListener('click',function(){
+    var a=b.getAttribute('data-cmny').split(','); nudgeY(a[0],parseFloat(a[1]));
+  });
+});
+$('#cmMarkToggle').addEventListener('click',function(){
+  C.showMarks=!C.showMarks;
+  this.textContent=C.showMarks?'開始位置マーカーを隠す':'開始位置マーカーを出す';
+  this.classList.toggle('ok',C.showMarks);
+  paint();
+});
+$('#cmAlignY').addEventListener('click',function(){
+  if(!C.showMarks){
+    C.showMarks=true;$('#cmMarkToggle').textContent='開始位置マーカーを隠す';
+    $('#cmMarkToggle').classList.add('ok');paint();
+    $('#cmAlignMsg').textContent='ピンクの線を物体の高さに合わせてから、もう一度押してください。';
+    return;
+  }
+  var d=(C.marks.L-C.marks.R)*100;
+  PL('R').offsetY=clamp(PL('R').offsetY+d,-100,100);
+  C.marks.R=C.marks.L;
+  syncAdjust(); applyFit(); place();
+  $('#cmAlignMsg').textContent='右の映像を '+(d>=0?'下':'上')+'に '+Math.abs(d).toFixed(1)+'% 動かしてそろえました。';
+});
+$('#cmMarkRuler').addEventListener('click',function(){
+  C.ruler.y0=C.marks.L;
+  C.ruler.u=Math.max(0.003,Math.min(C.ruler.u,(0.97-C.ruler.y0)/16));
+  if(!C.showRuler){C.showRuler=true;$('#cmRulerToggle').textContent='目盛りを隠す';$('#cmRulerToggle').classList.add('ok');}
+  paint();
+  $('#cmAlignMsg').textContent='この高さを目盛りの 0 にしました。';
+});
+$('#cmResetY').addEventListener('click',function(){
+  SIDES.forEach(function(s){PL(s).offsetY=0;});
+  syncAdjust(); applyFit(); $('#cmAlignMsg').textContent='上下位置を戻しました。';
+});
+$('#cmDragMove').addEventListener('change',function(){
+  C.dragMove=this.checked;
+  SIDES.forEach(function(s){PL(s).vp.classList.toggle('movable',C.dragMove);});
+});
+
+/* ---------- 表示 ---------- */
+$('#cmLayoutSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  C.layout=b.getAttribute('data-layout'); applyLayout();
+});
+$('#cmOvop').addEventListener('input',function(){
+  C.ovop=parseFloat(this.value);$('#cmOvopV').textContent=Math.round(C.ovop*100)+'%';applyLayout();
+});
+$('#cmFitSel').addEventListener('change',function(){C.fit=this.value;applyFit();});
+$('#cmGuideToggle').addEventListener('click',function(){
+  C.showGuides=!C.showGuides;
+  if(C.showGuides&&C.guides.length===0)C.guides.push({id:++C.gid,y:0.35});
+  this.textContent=C.showGuides?'ガイド線を隠す':'ガイド線を表示';
+  this.classList.toggle('ok',C.showGuides); paint();
+});
+$('#cmGuideAdd').addEventListener('click',function(){
+  if(C.guides.length>=3){A.toast('ガイド線は3本までです。');return;}
+  C.guides.push({id:++C.gid,y:clamp(0.3+C.guides.length*0.18,0,0.95)});
+  C.showGuides=true;
+  $('#cmGuideToggle').textContent='ガイド線を隠す';$('#cmGuideToggle').classList.add('ok');
+  paint();
+});
+$('#cmGuideClear').addEventListener('click',function(){
+  C.guides=[];C.showGuides=false;
+  $('#cmGuideToggle').textContent='ガイド線を表示';$('#cmGuideToggle').classList.remove('ok');
+  paint();
+});
+$('#cmRulerToggle').addEventListener('click',function(){
+  C.showRuler=!C.showRuler;
+  this.textContent=C.showRuler?'目盛りを隠す':'目盛りを表示';
+  this.classList.toggle('ok',C.showRuler); paint();
+});
+function applyLayout(){
+  var st=$('#stage');
+  st.className='stage '+C.layout;
+  st.style.setProperty('--ovop',String(C.ovop));
+  document.querySelector('.panel[data-side="R"]').classList.toggle('dim',C.layout==='over');
+  A.show('#cmOvopRow',C.layout==='over');
+  $$('#cmLayoutSeg button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-layout')===C.layout);});
+}
+function applyFit(){
+  var ar=(C.fit==='full')?C.ar:(C.fit==='3:4'?0.75:9/16);
+  SIDES.forEach(function(s){
+    var p=PL(s);
+    p.vp.style.aspectRatio=String(ar);
+    p.video.style.objectFit=(C.fit==='full')?'contain':'cover';
+    A.applyTransform(p,0);
+  });
+}
+
+/* ---------- 調整 ---------- */
+$$('[data-cmsc]').forEach(function(r){r.addEventListener('input',function(){
+  var s=r.getAttribute('data-cmsc');PL(s).scale=parseFloat(r.value);
+  document.querySelector('[data-cmscv="'+s+'"]').textContent=PL(s).scale.toFixed(3);applyFit();});});
+$$('[data-cmoy]').forEach(function(r){r.addEventListener('input',function(){
+  var s=r.getAttribute('data-cmoy'),p=PL(s),nv=parseFloat(r.value);
+  C.marks[s]=clamp(C.marks[s]+(nv-p.offsetY)/100,0,1); p.offsetY=nv;
+  document.querySelector('[data-cmoyv="'+s+'"]').textContent=nv.toFixed(1)+'%';
+  document.querySelector('[data-cmnyv="'+s+'"]').textContent=nv.toFixed(1);
+  applyFit();place();});});
+$$('[data-cmpx]').forEach(function(r){r.addEventListener('input',function(){
+  var s=r.getAttribute('data-cmpx');PL(s).panX=parseFloat(r.value);
+  document.querySelector('[data-cmpxv="'+s+'"]').textContent=Math.round(PL(s).panX*100)+'%';applyFit();});});
+$('#cmResetAdjust').addEventListener('click',function(){
+  SIDES.forEach(function(s){var p=PL(s);p.scale=1;p.offsetY=0;p.panX=0.5;});
+  syncAdjust();applyFit();
+});
+$('#cmEngineSel').addEventListener('change',function(){
+  var was=A.S.playing; A.setPlaying(false); A.S.engine=this.value; if(was)A.setPlaying(true);
+});
+function syncAdjust(){
+  SIDES.forEach(function(s){
+    var p=PL(s);
+    document.querySelector('[data-cmsc="'+s+'"]').value=String(p.scale);
+    document.querySelector('[data-cmscv="'+s+'"]').textContent=p.scale.toFixed(3);
+    document.querySelector('[data-cmoy="'+s+'"]').value=String(p.offsetY);
+    document.querySelector('[data-cmoyv="'+s+'"]').textContent=p.offsetY.toFixed(1)+'%';
+    document.querySelector('[data-cmnyv="'+s+'"]').textContent=p.offsetY.toFixed(1);
+    document.querySelector('[data-cmpx="'+s+'"]').value=String(p.panX);
+    document.querySelector('[data-cmpxv="'+s+'"]').textContent=Math.round(p.panX*100)+'%';
+  });
+}
+
+/* ---------- 重ねて確認 ---------- */
+$('#cmAlignCheck').addEventListener('click',function(){
+  C.layout='over';C.ovop=0.5;$('#cmOvop').value='0.5';$('#cmOvopV').textContent='50%';applyLayout();
+});
+$('#cmAlignAdjust').addEventListener('click',function(){C.layout='over';applyLayout();A.setTab('adjust');});
+$('#cmAlignOk').addEventListener('click',function(){
+  C.alignDone=true;C.layout='side';applyLayout();A.show('#cmAlignBanner',false);
+});
+function banner(){
+  var on=bothReady()&&!C.alignDone;
+  A.show('#cmAlignBanner',on);
+  $('#cmAlignMsgTop').textContent=(C.cmode==='A')
+    ?'左右が同じ動画なので背景は必ず一致します。このステップは飛ばしてかまいません。'
+    :'2つの映像を半透明で重ねて、机の縁など背景の目印が一致しているか確かめてください。';
+}
+
+/* ---------- 描画 ---------- */
+function paint(){
+  SIDES.forEach(function(s){
+    var p=PL(s); A.ov.clear(p);
+    if(C.showGuides){
+      C.guides.forEach(function(g,i){
+        var d=A.ov.el(p,'hline guide','ガイド'+(i+1));
+        d.setAttribute('data-g',g.id);
+        d.addEventListener('pointerdown',function(ev){A.dragY(ev,p.vp,function(y){g.y=y;place();});});
+      });
+    }
+    if(C.showMarks){
+      var mk=A.ov.el(p,'hline mark',s==='L'?'左：落下開始の高さ':'右：最高点の高さ');
+      mk.addEventListener('pointerdown',function(ev){A.dragY(ev,p.vp,function(y){C.marks[s]=y;place();});});
+    }
+    if(C.showRuler){
+      [0,1,4,9,16].forEach(function(k){
+        var d=A.ov.el(p,'hline rule'+(k===0?' o':''),k===0?'0（開始点）':String(k));
+        d.setAttribute('data-k',String(k));
+        d.addEventListener('pointerdown',function(ev){
+          A.dragY(ev,p.vp,function(y){
+            if(k===0)C.ruler.y0=y; else C.ruler.u=Math.max(0.003,(y-C.ruler.y0)/k);
+            place();
+          });
+        });
+      });
+    }
+  });
+  place();
+}
+function place(){
+  SIDES.forEach(function(s){
+    var o=PL(s).ovl;
+    C.guides.forEach(function(g){
+      var el=o.querySelector('.guide[data-g="'+g.id+'"]'); if(el)el.style.top=(g.y*100)+'%';
+    });
+    var mk=o.querySelector('.mark'); if(mk)mk.style.top=(C.marks[s]*100)+'%';
+    Array.prototype.forEach.call(o.querySelectorAll('.rule'),function(el){
+      el.style.top=((C.ruler.y0+parseFloat(el.getAttribute('data-k'))*C.ruler.u)*100)+'%';
+    });
+  });
+}
+
+/* ---------- 保存 ---------- */
+function pick(p){return {name:p.name,startFrame:p.startFrame,scale:p.scale,offsetY:p.offsetY,panX:p.panX};}
+$('#cmSaveJson').addEventListener('click',function(){
+  A.download('rakka-settei.json',{app:'projectile-lab',part:'compare',version:2,
+    cmode:C.cmode,fps:A.S.fps,layout:C.layout,rate:A.S.rate,engine:A.S.engine,ovop:C.ovop,fit:C.fit,
+    showGuides:C.showGuides,showRuler:C.showRuler,showMarks:C.showMarks,
+    guides:C.guides,ruler:C.ruler,marks:C.marks,L:pick(PL('L')),R:pick(PL('R'))});
+  $('#cmSaveMsg').textContent='書き出しました。';
+});
+$('#cmLoadJson').addEventListener('click',function(){A.pendingJson='compare';$('#jsonIn').click();});
+A.compareLoadJson=function(d){
+  if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
+  if(d.layout)C.layout=d.layout;
+  if(d.fit){C.fit=d.fit;$('#cmFitSel').value=d.fit;}
+  if(typeof d.ovop==='number'){C.ovop=d.ovop;$('#cmOvop').value=String(d.ovop);$('#cmOvopV').textContent=Math.round(d.ovop*100)+'%';}
+  if(d.engine){A.S.engine=d.engine;$('#cmEngineSel').value=d.engine;}
+  if(typeof d.rate==='number'){A.S.rate=d.rate;
+    $$('#rateSeg button').forEach(function(x){x.classList.toggle('on',parseFloat(x.getAttribute('data-rate'))===d.rate);});}
+  C.guides=Array.isArray(d.guides)?d.guides.map(function(g){return {id:++C.gid,y:clamp(g.y,0,1)};}):[];
+  if(d.ruler)C.ruler={y0:clamp(d.ruler.y0,0,1),u:Math.max(0.003,d.ruler.u)};
+  if(d.marks)C.marks={L:clamp(d.marks.L,0,1),R:clamp(d.marks.R,0,1)};
+  C.showGuides=!!d.showGuides;C.showRuler=!!d.showRuler;C.showMarks=!!d.showMarks;
+  SIDES.forEach(function(s){
+    var src=d[s]; if(!src)return; var p=PL(s);
+    p.startFrame=Math.max(0,src.startFrame|0);
+    p.scale=src.scale||1;p.offsetY=src.offsetY||0;
+    p.panX=(typeof src.panX==='number')?src.panX:0.5;
+  });
+  $('#cmGuideToggle').textContent=C.showGuides?'ガイド線を隠す':'ガイド線を表示';
+  $('#cmGuideToggle').classList.toggle('ok',C.showGuides);
+  $('#cmRulerToggle').textContent=C.showRuler?'目盛りを隠す':'目盛りを表示';
+  $('#cmRulerToggle').classList.toggle('ok',C.showRuler);
+  $('#cmMarkToggle').textContent=C.showMarks?'開始位置マーカーを隠す':'開始位置マーカーを出す';
+  $('#cmMarkToggle').classList.toggle('ok',C.showMarks);
+  A.setPlaying(false);clearPreview();A.S.s=0;
+  applyLayout();applyFit();syncAdjust();paint();
+  $('#cmSaveMsg').textContent='読み込みました。動画は別途読み込んでください。';
+};
+
+/* ---------- ①からの引き継ぎ ---------- */
+A.handoffToCompare=function(file,apexFrame){
+  C.cmode='B';
+  $$('#cmpModeSeg button').forEach(function(x){x.classList.toggle('on',x.getAttribute('data-cmode')==='B');});
+  A.setMode('compare');
+  A.refreshZones();
+  var once=function(p){
+    if(p.id!=='R')return;
+    p.startFrame=Math.max(0,apexFrame|0);
+    A.toast('右（斜方投射）に引き継ぎました。開始点は最高点（'+p.startFrame+' コマ）です。<br>左に自由落下の動画を読み込んでください。',6000);
+  };
+  A.on('loaded',once);
+  A.takeFile('R',file);
+};
+
+/* ---------- モード定義 ---------- */
+var mode={
+  players:['L','R'],
+  allowNative:true,
+  loadTitle:'自由落下と斜方投射の動画を読み込む',
+  loadLead:'斜方投射の最高点と自由落下の落下開始をそろえると、以後の落下距離が一致します。',
+  zones:function(){return C.cmode==='A'?['A']:['L','R'];},
+  nameSlot:function(pid){return C.cmode==='A'?'A':pid;},
+  onFile:function(t,file){
+    if(t==='A'){A.loadInto('L',file);A.loadInto('R',file);}
+    else A.loadInto(t,file);
+  },
+  tabs:[{id:'start',label:'開始点'},{id:'align',label:'そろえる'},
+        {id:'view',label:'表示'},{id:'adjust',label:'調整'},{id:'save',label:'保存'}],
+  onTab:function(){},
+  sMax:maxT,
+  timeFor:function(pid){
+    if(pid!=='L'&&pid!=='R')return null;
+    return startTime(PL(pid))+A.S.s;
+  },
+  step:function(n){
+    if(C.activeSide){
+      var p=PL(C.activeSide); if(!p.ready)return;
+      var base=p.previewing?p.video.currentTime:startTime(p)+A.S.s;
+      previewSeek(p,A.FT(A.TF(base)+n));
+    }else{clearPreview();A.S.s=clamp(A.S.s+n/A.S.fps,0,maxT());}
+  },
+  onSeek:clearPreview,
+  onHead:clearPreview,
+  onEscape:function(){setActive(null);},
+  readout:function(){
+    return {label:'開始点から',text:'<b>'+f3(A.S.s)+'</b> s / <b>'+Math.round(A.S.s*A.S.fps)+'</b> コマ'};
+  },
+  onFrame:function(){
+    SIDES.forEach(function(s){
+      var p=PL(s); if(!p.ready)return;
+      document.querySelector('[data-sf2="'+s+'"]').textContent=String(p.startFrame);
+      document.querySelector('[data-st2="'+s+'"]').textContent=f3(startTime(p));
+      var sc=document.querySelector('[data-cmscrub="'+s+'"]');
+      sc.max=String(Math.max(0.001,p.video.duration));sc.step=String(1/A.S.fps);
+      if(document.activeElement!==sc)sc.value=String(p.previewing?p.video.currentTime:startTime(p)+A.S.s);
+      document.querySelector('[data-cmscrubv="'+s+'"]').textContent=A.TF(parseFloat(sc.value)||0)+'コマ';
+    });
+  },
+  fpsKeep:function(){return [];},
+  enter:function(){
+    $('#cmpModeHint').textContent=(C.cmode==='A')
+      ?'同じ動画を左右に読み込み、別々の開始フレームを指定します（スケールのずれが起きません）'
+      :'別々に撮影した2本の動画を左右に読み込みます';
+    applyLayout();syncAdjust();
+  },
+  onReady:function(){
+    var p=PL('L').ar?PL('L'):PL('R');
+    if(p.ar)C.ar=p.ar;
+    A.S.s=0;clearPreview();applyLayout();applyFit();paint();banner();
+  }
+};
+A.registerMode('compare',mode);
+
+/* 映像の上：横になぞる＝コマ送り、縦＝（許可時）映像を上下に動かす */
+SIDES.forEach(function(s){
+  var p=PL(s);
+  p.vp.addEventListener('pointerdown',function(){if(A.S.mode==='compare')setActive(s);});
+  A.attachStageGesture(p,{
+    armed:function(){return false;},
+    onJog:function(d){if(A.S.mode==='compare')A.step(d);},
+    onDragYStart:function(){return C.marks[s];},
+    onDragY:function(newOffset,newMark){
+      if(A.S.mode!=='compare'||!C.dragMove)return;
+      p.offsetY=clamp(newOffset,-100,100);
+      C.marks[s]=clamp(newMark,0,1);
+      syncAdjust();applyFit();place();
+    }
+  });
+});
+})(App);
+
+/* ========== 90-boot.js ========== */
+/* =========================================================
+   起動 — 最後に読み込まれます
+   ========================================================= */
+(function(A){
+'use strict';
+var $=A.$;
+
+/* 設定ファイルの読み込みは、押されたボタンに応じて振り分ける */
+$('#jsonIn').addEventListener('change',function(e){
+  var f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f)return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    var d;
+    try{d=JSON.parse(fr.result);}catch(err){A.toast('設定ファイルを読み込めませんでした。');return;}
+    var want=A.pendingJson||d.part;
+    if(want==='observe'&&A.observeLoadJson)A.observeLoadJson(d);
+    else if(want==='compare'&&A.compareLoadJson)A.compareLoadJson(d);
+    else A.toast('この設定ファイルの種類がわかりませんでした。');
+    A.pendingJson=null;
+  };
+  fr.readAsText(f);
+});
+
+/* iOS で2本指の拡大を止める（線のドラッグを邪魔しないように） */
+document.addEventListener('gesturestart',function(e){e.preventDefault();});
+
+A.fpsHint();
+A.setMode('observe');
+A.startClock();
+})(App);
+
+</script>
+</body>
+</html>
