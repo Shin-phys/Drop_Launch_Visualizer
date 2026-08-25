@@ -216,6 +216,65 @@ table.tbl th{background:var(--card2);color:var(--mut);font-weight:600}
   .seg.sm button{padding:5px 8px}
 }
 
+/* =========================================================
+   狭い画面（生徒のスマホ）用の外枠
+   body.compact のときだけ効きます。中身の作りはPCと同じです。
+   ========================================================= */
+.loadbar{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.loadbar .mut{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#stepbar{display:flex;gap:8px;align-items:center;margin-top:8px;
+  padding:8px 0 calc(4px + env(safe-area-inset-bottom));border-top:1px solid var(--line)}
+#stepbar .stepinfo{flex:1;min-width:0;text-align:center;line-height:1.25}
+#stepbar .stepinfo b{display:block;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#stepbar .btn{flex:0 0 auto;min-height:52px}
+#btnRate{display:none}
+
+body.compact #app{height:100dvh;overflow:hidden}
+body.compact .wrap{flex:1;min-height:0;display:flex;flex-direction:column;padding:0;overflow:hidden}
+/* ヘッダーを1行に詰める（縦を映像と説明に回す） */
+body.compact #hdr{padding:calc(4px + env(safe-area-inset-top)) 8px 5px}
+body.compact #hdr .hrow{flex-wrap:nowrap;gap:6px}
+body.compact #fpsHint{display:none}
+body.compact #modeSeg button{font-size:.76rem;padding:4px 6px;min-height:40px;line-height:1.15}
+body.compact #hdr label{font-size:.8rem;gap:4px}
+body.compact #hdr select{min-height:40px;padding:4px 6px;font-size:.85rem}
+body.compact #btnCompact{min-height:40px;padding:4px 8px;font-size:.76rem;white-space:nowrap}
+body.compact .toast{top:calc(58px + env(safe-area-inset-top))}
+
+/* 読み込み画面はスクロールさせる。動画が入って1行に畳んだら固定に戻す */
+body.compact #secLoad{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  margin:0;border:0;border-radius:0;padding:10px}
+body.compact #secLoad.collapsed{flex:0 0 auto;overflow:visible;padding:8px 10px;
+  border-bottom:1px solid var(--line)}
+
+/* 映像と操作バーを上に据え、下の説明だけがスクロールする */
+body.compact #secStage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  margin:0;border:0;border-radius:0;padding:8px}
+/* 映像の高さは画面の36%を確保する（ここが痩せると観察にならない） */
+body.compact .stage{flex:1 1 auto;min-height:34dvh;max-height:46dvh;gap:5px;padding:0}
+body.compact .stage.side{grid-template-rows:1fr}
+body.compact .stage.stack{grid-template-rows:1fr 1fr}
+body.compact .panel{min-height:0}
+body.compact .vp{position:absolute;inset:0;width:auto;height:auto;aspect-ratio:auto!important}
+body.compact .transport{flex:0 0 auto;margin-top:6px;padding:7px}
+body.compact .transport .row{gap:6px}
+body.compact #btnHead,
+body.compact .transport .btn[data-step="-10"],
+body.compact .transport .btn[data-step="10"]{display:none}
+body.compact #btnPlay{flex:1}
+/* ジョグ帯は出さない。映像の上を横になぞれば同じことができる */
+body.compact .jog{display:none}
+body.compact #seekLab{display:none}
+body.compact .seekrow{margin-top:6px}
+body.compact .transport .row{flex-wrap:nowrap}
+body.compact #btnPlay{flex:1;min-width:0}
+body.compact #rateSeg{display:none}
+body.compact #btnRate{display:inline-block;flex:0 0 auto;min-width:62px;padding:8px 6px}
+body.compact #panes{flex:1 1 auto;min-height:118px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
+body.compact .tabpane{border-radius:10px;padding:12px}
+body.compact .grid2{gap:8px}
+body.compact .subcard{padding:10px}
+
 </style>
 </head>
 <body>
@@ -235,6 +294,7 @@ table.tbl th{background:var(--card2);color:var(--mut);font-weight:600}
       </select>
     </label>
     <span class="mut small" id="fpsHint"></span>
+    <button class="btn sm" id="btnCompact">スマホ表示にする</button>
   </div>
 </header>
 
@@ -242,6 +302,11 @@ table.tbl th{background:var(--card2);color:var(--mut);font-weight:600}
 
 <!-- ================= 読み込み ================= -->
 <section class="card" id="secLoad">
+  <div class="loadbar hidden" id="loadBar">
+    <span class="mut small" id="loadBarName">—</span>
+    <button class="btn sm" id="loadBarChange">動画を変える</button>
+  </div>
+  <div id="loadFull">
   <h2 id="loadTitle">斜方投射の動画を読み込む</h2>
   <p class="mut small" id="loadLead" style="margin-top:0"></p>
 
@@ -348,6 +413,7 @@ table.tbl th{background:var(--card2);color:var(--mut);font-weight:600}
     </div>
   </div>
   <p class="note small" style="margin-top:10px">🔒 動画はこのブラウザの中だけで再生されます。サーバーには送信も保存もされません。</p>
+  </div><!-- /#loadFull -->
 </section>
 
 <!-- ================= ステージ ================= -->
@@ -384,6 +450,7 @@ table.tbl th{background:var(--card2);color:var(--mut);font-weight:600}
         <button data-rate="1" class="on">×1</button><button data-rate="0.5">×1/2</button>
         <button data-rate="0.25">×1/4</button><button data-rate="0.125">×1/8</button>
       </div>
+      <button class="btn" id="btnRate">×1</button>
     </div>
     <div class="seekrow">
       <span class="mut small" id="seekLab">位置</span>
@@ -642,6 +709,12 @@ table.tbl th{background:var(--card2);color:var(--mut);font-weight:600}
   </div>
 </div>
   </div><!-- /#panes -->
+
+  <div id="stepbar" class="hidden">
+    <button class="btn" id="stepPrev">← 戻る</button>
+    <div class="stepinfo"><b id="stepTitle">—</b><span class="mut small" id="stepCount"></span></div>
+    <button class="btn primary" id="stepNext">次へ →</button>
+  </div>
 </section>
 
 </div><!-- /wrap -->
@@ -955,6 +1028,7 @@ A.setMode = function(id){
   A.show('#secStage',allReady());
   if(allReady()&&m.onReady)m.onReady();
   syncPanels();
+  A.emit('mode',id);
 };
 $('#modeSeg').addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b)return;
@@ -962,8 +1036,11 @@ $('#modeSeg').addEventListener('click',function(e){
 });
 function needed(){return A.mode().players||[];}
 function allReady(){return needed().length>0&&needed().every(function(id){return A.P(id).ready;});}
+/* 読み込みが要るパネル（players）と、いま画面に出すパネルは別物。
+   たとえば①はミラー再生のタブのときだけ2枚出す。 */
+function shown(){var m=A.mode();return (m.activePanels?m.activePanels():m.players)||[];}
 function syncPanels(){
-  var use=needed();
+  var use=shown();
   $$('.panel').forEach(function(el){
     el.classList.toggle('off',use.indexOf(el.getAttribute('data-side'))<0);
   });
@@ -989,6 +1066,7 @@ A.setTab=function(id){
     p.classList.toggle('hidden',p.getAttribute('data-pane')!==(A.S.mode+':'+id));
   });
   if(m.onTab)m.onTab(id);
+  A.emit('tab',id);
 };
 $('#tabs').addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b)return;
@@ -1046,6 +1124,7 @@ A.on('loaded',function(p){
   if(allReady()){
     A.show('#secStage',true);
     if(A.mode().onReady)A.mode().onReady();
+    A.emit('stage',true);
   }
   syncPanels();
 });
@@ -1071,14 +1150,24 @@ $('#seek').addEventListener('input',function(){
   if(A.mode().onSeek)A.mode().onSeek();
   A.S.s=A.clamp(parseFloat(this.value)||0,0,A.sMax());
 });
-$('#rateSeg').addEventListener('click',function(e){
-  var b=e.target.closest('button'); if(!b)return;
-  A.S.rate=parseFloat(b.getAttribute('data-rate'));
-  $$('#rateSeg button').forEach(function(x){x.classList.toggle('on',x===b);});
+var RATES=[1,0.5,0.25,0.125];
+function setRate(r){
+  A.S.rate=r;
+  $$('#rateSeg button').forEach(function(x){x.classList.toggle('on',parseFloat(x.getAttribute('data-rate'))===r);});
+  $('#btnRate').textContent='×'+(r===1?'1':'1/'+Math.round(1/r));
   if(A.S.playing&&A.S.engine==='native'){
     Object.keys(A.players).forEach(function(k){
-      var p=A.players[k]; if(p.ready){try{p.video.playbackRate=Math.max(0.0625,A.S.rate);}catch(err){}}});
+      var p=A.players[k]; if(p.ready){try{p.video.playbackRate=Math.max(0.0625,r);}catch(err){}}});
   }
+}
+A.setRate=setRate;
+$('#rateSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  setRate(parseFloat(b.getAttribute('data-rate')));
+});
+/* 狭い画面では、押すたびに速度が一巡する1つのボタンにする */
+$('#btnRate').addEventListener('click',function(){
+  setRate(RATES[(RATES.indexOf(A.S.rate)+1)%RATES.length]);
 });
 A.on('playing',function(on){
   $('#btnPlay').textContent=on?'⏸ 一時停止':'▶ 再生';
@@ -1118,6 +1207,91 @@ window.addEventListener('beforeunload',function(){
   Object.keys(A.players).forEach(function(k){
     var p=A.players[k]; if(p.url){try{URL.revokeObjectURL(p.url);}catch(e){}}});
 });
+})(App);
+
+/* ========== 15-compact.js ========== */
+/* =========================================================
+   狭い画面（生徒のスマホ）用の外枠
+     ・画面を縦に固定し、映像と操作バーを上に据える
+     ・タブ帯のかわりに、下部で1ステップずつ進める
+     ・読み込みカードは、動画が入ったら1行に畳む
+   中身のロジックはPCと同じものをそのまま使います。
+   ========================================================= */
+(function(A){
+'use strict';
+var $=A.$;
+var BP='(max-width: 760px)';
+var mq=window.matchMedia(BP);
+var manual=null;              /* null＝画面幅にまかせる、true/false＝手動で固定 */
+
+function isCompact(){return document.body.classList.contains('compact');}
+function apply(){
+  var on=(manual===null)?mq.matches:manual;
+  document.body.classList.toggle('compact',on);
+  $('#btnCompact').textContent=on?'PC表示':'スマホ表示';
+  render();
+}
+if(mq.addEventListener)mq.addEventListener('change',function(){if(manual===null)apply();});
+else if(mq.addListener)mq.addListener(function(){if(manual===null)apply();});
+$('#btnCompact').addEventListener('click',function(){manual=!isCompact();apply();});
+
+/* ---------- 読み込みカードの折りたたみ ---------- */
+var expanded=false;
+$('#loadBarChange').addEventListener('click',function(){expanded=true;render();});
+
+/* ---------- ステップ ---------- */
+function tabs(){return A.mode().tabs||[];}
+function idx(){
+  var t=tabs();
+  for(var i=0;i<t.length;i++)if(t[i].id===A.S.tab)return i;
+  return 0;
+}
+function go(d){
+  var t=tabs(), i=idx()+d;
+  if(i<0||i>=t.length)return;
+  var m=A.mode();
+  if(m.canOpenTab&&!m.canOpenTab(t[i].id))return;
+  A.setTab(t[i].id);
+  var pane=document.querySelector('#panes .tabpane:not(.hidden)');
+  if(pane)pane.scrollTop=0;
+  $('#panes').scrollTop=0;
+}
+$('#stepPrev').addEventListener('click',function(){go(-1);});
+$('#stepNext').addEventListener('click',function(){go(1);});
+
+function render(){
+  var stageOn=!$('#secStage').classList.contains('hidden');
+  var compact=isCompact();
+
+  A.show('#stepbar',compact&&stageOn);
+  A.show('#tabs',!compact);
+
+  var collapse=compact&&stageOn&&!expanded;
+  A.show('#loadFull',!collapse);
+  A.show('#loadBar',collapse);
+  $('#secLoad').classList.toggle('collapsed',collapse);
+  if(collapse){
+    var seen={},names=[];
+    (A.mode().players||[]).forEach(function(id){
+      var n=A.P(id).name; if(n&&!seen[n]){seen[n]=1;names.push(n);}
+    });
+    $('#loadBarName').textContent=names.length?('✓ '+names.join(' ／ ')):'—';
+  }
+
+  var t=tabs(), i=idx();
+  if(t.length){
+    $('#stepTitle').textContent=t[i].label;
+    $('#stepCount').textContent=(i+1)+' / '+t.length;
+    $('#stepPrev').disabled=(i===0);
+    $('#stepNext').disabled=(i===t.length-1);
+    $('#stepNext').textContent=(i===t.length-1)?'おわり':'次へ →';
+  }
+}
+A.on('tab',render);
+A.on('mode',function(){expanded=false;render();});
+A.on('stage',function(){expanded=false;render();});
+A.compactRender=render;
+apply();
 })(App);
 
 /* ========== 20-observe.js ========== */
@@ -1299,7 +1473,7 @@ function setStage(){
   var st=$('#stage'), tab=A.S.tab;
   st.className='stage '+(tab==='v'?(O.mir==='over'?'over':'side'):'one');
   st.style.setProperty('--ovop',String(O.ovop));
-  document.querySelector('.panel[data-side="O2"]').classList.toggle('off',tab!=='v');
+  A.syncPanels();
   document.querySelector('.panel[data-side="O2"]').classList.toggle('dim',tab==='v'&&O.mir==='over');
   document.querySelector('[data-chip="O1"]').textContent=(tab==='v')?'下り（+t）':'映像';
   paint();
@@ -1399,6 +1573,7 @@ $('#obHandoff').addEventListener('click',function(){
 /* ---------- モード定義 ---------- */
 var mode={
   players:['O1','O2'],
+  activePanels:function(){return A.S.tab==='v'?['O1','O2']:['O1'];},
   allowNative:false,        /* 逆再生を含むので、必ずシークで同期する */
   loadTitle:'斜方投射の動画を読み込む',
   loadLead:'投げ上げたボールの動きを、水平方向と鉛直方向に分けて見ます。',
@@ -1742,8 +1917,7 @@ A.compareLoadJson=function(d){
   if(d.fit){C.fit=d.fit;$('#cmFitSel').value=d.fit;}
   if(typeof d.ovop==='number'){C.ovop=d.ovop;$('#cmOvop').value=String(d.ovop);$('#cmOvopV').textContent=Math.round(d.ovop*100)+'%';}
   if(d.engine){A.S.engine=d.engine;$('#cmEngineSel').value=d.engine;}
-  if(typeof d.rate==='number'){A.S.rate=d.rate;
-    $$('#rateSeg button').forEach(function(x){x.classList.toggle('on',parseFloat(x.getAttribute('data-rate'))===d.rate);});}
+  if(typeof d.rate==='number')A.setRate(d.rate);
   C.guides=Array.isArray(d.guides)?d.guides.map(function(g){return {id:++C.gid,y:clamp(g.y,0,1)};}):[];
   if(d.ruler)C.ruler={y0:clamp(d.ruler.y0,0,1),u:Math.max(0.003,d.ruler.u)};
   if(d.marks)C.marks={L:clamp(d.marks.L,0,1),R:clamp(d.marks.R,0,1)};

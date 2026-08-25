@@ -25,6 +25,7 @@
       </select>
     </label>
     <span class="mut small" id="fpsHint"></span>
+    <button class="btn sm" id="btnCompact">スマホ表示にする</button>
   </div>
 </header>
 
@@ -32,6 +33,11 @@
 
 <!-- ================= 読み込み ================= -->
 <section class="card" id="secLoad">
+  <div class="loadbar hidden" id="loadBar">
+    <span class="mut small" id="loadBarName">—</span>
+    <button class="btn sm" id="loadBarChange">動画を変える</button>
+  </div>
+  <div id="loadFull">
   <h2 id="loadTitle">斜方投射の動画を読み込む</h2>
   <p class="mut small" id="loadLead" style="margin-top:0"></p>
 
@@ -138,6 +144,7 @@
     </div>
   </div>
   <p class="note small" style="margin-top:10px">🔒 動画はこのブラウザの中だけで再生されます。サーバーには送信も保存もされません。</p>
+  </div><!-- /#loadFull -->
 </section>
 
 <!-- ================= ステージ ================= -->
@@ -174,6 +181,7 @@
         <button data-rate="1" class="on">×1</button><button data-rate="0.5">×1/2</button>
         <button data-rate="0.25">×1/4</button><button data-rate="0.125">×1/8</button>
       </div>
+      <button class="btn" id="btnRate">×1</button>
     </div>
     <div class="seekrow">
       <span class="mut small" id="seekLab">位置</span>
@@ -432,6 +440,12 @@
   </div>
 </div>
   </div><!-- /#panes -->
+
+  <div id="stepbar" class="hidden">
+    <button class="btn" id="stepPrev">← 戻る</button>
+    <div class="stepinfo"><b id="stepTitle">—</b><span class="mut small" id="stepCount"></span></div>
+    <button class="btn primary" id="stepNext">次へ →</button>
+  </div>
 </section>
 
 </div><!-- /wrap -->
@@ -444,6 +458,7 @@
 <!-- build: このかたまりが1つの <script> にまとめられます -->
 <script src="js/00-core.js"></script>
 <script src="js/10-shell.js"></script>
+<script src="js/15-compact.js"></script>
 <script src="js/20-observe.js"></script>
 <script src="js/30-compare.js"></script>
 <script src="js/90-boot.js"></script>

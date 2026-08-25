@@ -29,6 +29,7 @@ A.setMode = function(id){
   A.show('#secStage',allReady());
   if(allReady()&&m.onReady)m.onReady();
   syncPanels();
+  A.emit('mode',id);
 };
 $('#modeSeg').addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b)return;
@@ -36,8 +37,11 @@ $('#modeSeg').addEventListener('click',function(e){
 });
 function needed(){return A.mode().players||[];}
 function allReady(){return needed().length>0&&needed().every(function(id){return A.P(id).ready;});}
+/* 読み込みが要るパネル（players）と、いま画面に出すパネルは別物。
+   たとえば①はミラー再生のタブのときだけ2枚出す。 */
+function shown(){var m=A.mode();return (m.activePanels?m.activePanels():m.players)||[];}
 function syncPanels(){
-  var use=needed();
+  var use=shown();
   $$('.panel').forEach(function(el){
     el.classList.toggle('off',use.indexOf(el.getAttribute('data-side'))<0);
   });
@@ -63,6 +67,7 @@ A.setTab=function(id){
     p.classList.toggle('hidden',p.getAttribute('data-pane')!==(A.S.mode+':'+id));
   });
   if(m.onTab)m.onTab(id);
+  A.emit('tab',id);
 };
 $('#tabs').addEventListener('click',function(e){
   var b=e.target.closest('button'); if(!b)return;
@@ -120,6 +125,7 @@ A.on('loaded',function(p){
   if(allReady()){
     A.show('#secStage',true);
     if(A.mode().onReady)A.mode().onReady();
+    A.emit('stage',true);
   }
   syncPanels();
 });
@@ -145,14 +151,24 @@ $('#seek').addEventListener('input',function(){
   if(A.mode().onSeek)A.mode().onSeek();
   A.S.s=A.clamp(parseFloat(this.value)||0,0,A.sMax());
 });
-$('#rateSeg').addEventListener('click',function(e){
-  var b=e.target.closest('button'); if(!b)return;
-  A.S.rate=parseFloat(b.getAttribute('data-rate'));
-  $$('#rateSeg button').forEach(function(x){x.classList.toggle('on',x===b);});
+var RATES=[1,0.5,0.25,0.125];
+function setRate(r){
+  A.S.rate=r;
+  $$('#rateSeg button').forEach(function(x){x.classList.toggle('on',parseFloat(x.getAttribute('data-rate'))===r);});
+  $('#btnRate').textContent='×'+(r===1?'1':'1/'+Math.round(1/r));
   if(A.S.playing&&A.S.engine==='native'){
     Object.keys(A.players).forEach(function(k){
-      var p=A.players[k]; if(p.ready){try{p.video.playbackRate=Math.max(0.0625,A.S.rate);}catch(err){}}});
+      var p=A.players[k]; if(p.ready){try{p.video.playbackRate=Math.max(0.0625,r);}catch(err){}}});
   }
+}
+A.setRate=setRate;
+$('#rateSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  setRate(parseFloat(b.getAttribute('data-rate')));
+});
+/* 狭い画面では、押すたびに速度が一巡する1つのボタンにする */
+$('#btnRate').addEventListener('click',function(){
+  setRate(RATES[(RATES.indexOf(A.S.rate)+1)%RATES.length]);
 });
 A.on('playing',function(on){
   $('#btnPlay').textContent=on?'⏸ 一時停止':'▶ 再生';

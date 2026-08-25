@@ -280,8 +280,7 @@ A.compareLoadJson=function(d){
   if(d.fit){C.fit=d.fit;$('#cmFitSel').value=d.fit;}
   if(typeof d.ovop==='number'){C.ovop=d.ovop;$('#cmOvop').value=String(d.ovop);$('#cmOvopV').textContent=Math.round(d.ovop*100)+'%';}
   if(d.engine){A.S.engine=d.engine;$('#cmEngineSel').value=d.engine;}
-  if(typeof d.rate==='number'){A.S.rate=d.rate;
-    $$('#rateSeg button').forEach(function(x){x.classList.toggle('on',parseFloat(x.getAttribute('data-rate'))===d.rate);});}
+  if(typeof d.rate==='number')A.setRate(d.rate);
   C.guides=Array.isArray(d.guides)?d.guides.map(function(g){return {id:++C.gid,y:clamp(g.y,0,1)};}):[];
   if(d.ruler)C.ruler={y0:clamp(d.ruler.y0,0,1),u:Math.max(0.003,d.ruler.u)};
   if(d.marks)C.marks={L:clamp(d.marks.L,0,1),R:clamp(d.marks.R,0,1)};

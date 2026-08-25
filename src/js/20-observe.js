@@ -176,7 +176,7 @@ function setStage(){
   var st=$('#stage'), tab=A.S.tab;
   st.className='stage '+(tab==='v'?(O.mir==='over'?'over':'side'):'one');
   st.style.setProperty('--ovop',String(O.ovop));
-  document.querySelector('.panel[data-side="O2"]').classList.toggle('off',tab!=='v');
+  A.syncPanels();
   document.querySelector('.panel[data-side="O2"]').classList.toggle('dim',tab==='v'&&O.mir==='over');
   document.querySelector('[data-chip="O1"]').textContent=(tab==='v')?'下り（+t）':'映像';
   paint();
@@ -276,6 +276,7 @@ $('#obHandoff').addEventListener('click',function(){
 /* ---------- モード定義 ---------- */
 var mode={
   players:['O1','O2'],
+  activePanels:function(){return A.S.tab==='v'?['O1','O2']:['O1'];},
   allowNative:false,        /* 逆再生を含むので、必ずシークで同期する */
   loadTitle:'斜方投射の動画を読み込む',
   loadLead:'投げ上げたボールの動きを、水平方向と鉛直方向に分けて見ます。',
