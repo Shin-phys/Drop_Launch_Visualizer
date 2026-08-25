@@ -9,7 +9,8 @@ var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
 
 var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,
   x1:null,y1:null,x2:null,y2:null,sMark:0,arm:0,
-  showGrid:false,showPred:false,camOn:false,vx:0,vxAuto:0,
+  showGrid:false,showPred:false,camOn:false,vx:0,vxAuto:0,vxManual:null,
+  maskOn:false,maskW:0.12,maskOp:0.55,sbs:false,camX:0.5,
   mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4};
 A.O=O;
 var P1=function(){return A.P('O1');}, P2=function(){return A.P('O2');};
@@ -65,16 +66,16 @@ $('#obRangeReset').addEventListener('click',function(){O.fStart=O.fApex=O.fEnd=n
 
 /* ---------- 位置をはかる ---------- */
 function resetMeasure(){
-  O.x1=O.y1=O.x2=O.y2=null;O.arm=0;O.showGrid=false;O.showPred=false;O.camOn=false;O.vx=0;O.vxAuto=0;
+  O.x1=O.y1=O.x2=O.y2=null;O.arm=0;O.showGrid=false;O.showPred=false;O.vxAuto=0;O.vxManual=null;
+  O.camX=0.5;
   $('#obMeas1v').textContent='—';$('#obMeas2v').textContent='—';
   $('#obM1').classList.remove('done');$('#obM2').classList.remove('done');
-  $('#obMeas2').disabled=true;$('#obMeasOut').classList.add('hidden');
-  ['#obGrid','#obPred','#obCam'].forEach(function(s){$(s).disabled=true;$(s).classList.remove('ok');});
-  $('#obGrid').textContent='この間隔で縦線を引く';
-  $('#obPred').textContent='予想の位置を出す';
-  $('#obCam').textContent='カメラでボールを追う';
-  $('#obCamMsg').textContent='';
-  armUI(); paint();
+  $('#obMeas2').disabled=true;
+  $('#obMeasOut').classList.add('hidden');
+  $('#obCompare').classList.add('hidden');
+  ['#obGrid','#obPred'].forEach(function(x){$(x).disabled=true;$(x).classList.remove('ok');});
+  $('#obCamAuto').disabled=true;
+  syncHButtons(); armUI(); paint();
 }
 function armUI(){A.ov.arm(O.arm>0);
   $('#obMeas1').classList.toggle('warn',O.arm===1);
@@ -86,11 +87,22 @@ $('#obMeas1').addEventListener('click',function(){O.arm=1;armUI();});
 $('#obMeas2').addEventListener('click',function(){O.arm=2;armUI();});
 $('#obApexPick').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;O.arm=3;armUI();});
 
+/* 押した位置と離した位置がほぼ同じ（＝タップ）のときだけ点を取る。
+   こうしておくと、拡大中に指でなぞって移動しても誤って点が入らない。 */
+function pickDown(pid){
+  return function(e){
+    if(A.S.mode!=='observe'||!O.arm)return;
+    O._px=e.clientX; O._py=e.clientY;
+  };
+}
 function pick(pid){
   return function(e){
     if(A.S.mode!=='observe'||!O.arm)return;
     if(pid==='O2'&&O.arm!==3)return;
     if(A.isOverlayEl(e.target))return;
+    if(O._px==null)return;
+    if(Math.abs(e.clientX-O._px)>8||Math.abs(e.clientY-O._py)>8){O._px=null;return;}
+    O._px=null;
     var vp=A.P(pid).vp, r=vp.getBoundingClientRect();
     var x=clamp((e.clientX-r.left)/r.width,0,1), y=clamp((e.clientY-r.top)/r.height,0,1);
     if(O.arm===1){
@@ -113,20 +125,41 @@ function pick(pid){
     paint();
   };
 }
-['O1','O2'].forEach(function(id){A.P(id).vp.addEventListener('pointerdown',pick(id));});
+['O1','O2'].forEach(function(id){
+  A.P(id).vp.addEventListener('pointerdown',pickDown(id));
+  A.P(id).vp.addEventListener('pointerup',pick(id));
+});
 
 function finishMeasure(){
   var d=O.x2-O.x1;
-  O.vxAuto=d/dtSec(); O.vx=O.vxAuto;
+  if(O.vxManual===null)O.vxManual=O.vx;      /* 生徒が自分で合わせた値を控えておく */
+  O.vxAuto=d/dtSec();
+  /* カメラをまだ触っていない場合だけ、測った値を入れておく
+     （自分で合わせた値があるときは上書きしない。それが答え合わせになるので） */
+  if(Math.abs(O.vxManual)<0.01)O.vx=O.vxAuto;
+  O.camX=O.x1;
   $('#obMeasOut').classList.remove('hidden');
   $('#obMeasOut').innerHTML='Δt ＝ <b>'+O.dtF+' コマ ＝ '+f3(dtSec())+' 秒</b> のあいだに、'+
     'ボールは横に <b>画面幅の '+(Math.abs(d)*100).toFixed(1)+'%</b> 進みました。<br>'+
     'つまり水平方向の速さは <b>'+Math.abs(O.vxAuto).toFixed(2)+' 画面幅/秒</b>。'+
     'この速さがずっと変わらないなら、水平方向は等速直線運動です。';
-  ['#obGrid','#obPred','#obCam'].forEach(function(s){$(s).disabled=false;});
-  var cv=$('#obCamV'), lim=Math.max(0.2,Math.abs(O.vxAuto)*2.5);
+  ['#obGrid','#obPred'].forEach(function(x){$(x).disabled=false;});
+  $('#obCamAuto').disabled=false;
+  var cv=$('#obCamV'), lim=Math.max(0.5,Math.abs(O.vxAuto)*2.5);
   cv.min=String(-lim); cv.max=String(lim); cv.value=String(O.vx);
   $('#obCamVv').textContent=O.vx.toFixed(2);
+  showCompare();
+}
+/* 自分で合わせた速さと、測って出した速さを並べる（測定が答え合わせになる） */
+function showCompare(){
+  var man=O.vxManual;
+  if(man==null||Math.abs(man)<0.01){$('#obCompare').classList.add('hidden');return;}
+  var diff=Math.abs(man-O.vxAuto)/Math.abs(O.vxAuto)*100;
+  $('#obCompare').classList.remove('hidden');
+  $('#obCompare').innerHTML='自分で合わせた速さ <b>'+Math.abs(man).toFixed(2)+'</b> ／ '+
+    '測って出した速さ <b>'+Math.abs(O.vxAuto).toFixed(2)+'</b> 画面幅/秒　'+
+    '（ちがい <b>'+diff.toFixed(0)+'%</b>）'+
+    (diff<10?'　目で合わせた速さは、測った値とほぼ同じでした。':'');
 }
 $('#obGrid').addEventListener('click',function(){
   O.showGrid=!O.showGrid; if(O.showGrid)O.camOn=false; syncHButtons(); paint();
@@ -134,9 +167,22 @@ $('#obGrid').addEventListener('click',function(){
 $('#obPred').addEventListener('click',function(){O.showPred=!O.showPred;syncHButtons();paint();});
 $('#obCam').addEventListener('click',function(){
   O.camOn=!O.camOn; if(O.camOn)O.showGrid=false;
+  if(O.camOn&&O.x1==null)O.sMark=A.S.s;   /* 測定前は、いま見ているコマを基準にする */
   $('#obCamMsg').textContent=O.camOn
     ?'ボールが青い線の上を、まっすぐ上下するように速さを合わせてください。ひとつの速さで最後まで線に乗れば、水平方向は等速です。':'';
-  syncHButtons(); paint();
+  syncHButtons(); A.syncPanels(); setStage();
+});
+$('#obMask').addEventListener('click',function(){
+  O.maskOn=!O.maskOn; A.show('#obMaskRow',O.maskOn); syncHButtons(); paint();
+});
+$('#obMaskW').addEventListener('input',function(){
+  O.maskW=parseFloat(this.value);$('#obMaskWv').textContent=Math.round(O.maskW*100)+'%';place();
+});
+$('#obMaskOp').addEventListener('input',function(){
+  O.maskOp=parseFloat(this.value);$('#obMaskOpv').textContent=Math.round(O.maskOp*100)+'%';place();
+});
+$('#obSbs').addEventListener('click',function(){
+  O.sbs=!O.sbs; syncHButtons(); A.syncPanels(); setStage();
 });
 function syncHButtons(){
   $('#obGrid').classList.toggle('ok',O.showGrid);
@@ -144,13 +190,23 @@ function syncHButtons(){
   $('#obPred').classList.toggle('ok',O.showPred);
   $('#obPred').textContent=O.showPred?'予想の位置を消す':'予想の位置を出す';
   $('#obCam').classList.toggle('ok',O.camOn);
-  $('#obCam').textContent=O.camOn?'カメラを止める':'カメラでボールを追う';
+  $('#obCam').textContent=O.camOn?'カメラを止める':'カメラを動かす';
+  $('#obMask').classList.toggle('ok',O.maskOn);
+  $('#obMask').textContent=O.maskOn?'背景を出す':'背景を隠す';
+  $('#obSbs').classList.toggle('ok',O.sbs);
+  $('#obSbs').textContent=O.sbs?'並べるのをやめる':'もとの映像と並べる';
+  $('#obMask').disabled=!O.camOn;
+  $('#obSbs').disabled=!O.camOn;
+  if(!O.camOn)A.show('#obMaskRow',false);
 }
 $('#obCamV').addEventListener('input',function(){
   O.vx=parseFloat(this.value);$('#obCamVv').textContent=O.vx.toFixed(2);
+  if(O.vxAuto)showCompare();
 });
 $('#obCamAuto').addEventListener('click',function(){
+  if(O.vxManual===null)O.vxManual=O.vx;
   O.vx=O.vxAuto;$('#obCamV').value=String(O.vx);$('#obCamVv').textContent=O.vx.toFixed(2);
+  showCompare();
 });
 
 /* ---------- ミラー再生 ---------- */
@@ -174,11 +230,15 @@ $('#obHG').addEventListener('click',function(){
 /* ---------- 描画 ---------- */
 function setStage(){
   var st=$('#stage'), tab=A.S.tab;
-  st.className='stage '+(tab==='v'?(O.mir==='over'?'over':'side'):'one');
+  var two=(tab==='v')||(tab==='h'&&O.camOn&&O.sbs);
+  st.className='stage '+(tab==='v'?(O.mir==='over'?'over':'side'):(two?'side':'one'));
   st.style.setProperty('--ovop',String(O.ovop));
   A.syncPanels();
   document.querySelector('.panel[data-side="O2"]').classList.toggle('dim',tab==='v'&&O.mir==='over');
-  document.querySelector('[data-chip="O1"]').textContent=(tab==='v')?'下り（+t）':'映像';
+  document.querySelector('[data-chip="O1"]').textContent=
+    (tab==='v')?'下り（+t）':(two?'追いかけカメラ':'映像');
+  document.querySelector('[data-chip="O2"]').textContent=
+    (tab==='v')?'逆再生（上り）':'もとの映像';
   paint();
 }
 function paint(){
@@ -198,7 +258,15 @@ function paint(){
         }
       }
     }
-    if(O.camOn&&O.x1!=null)A.ov.el(p1,'vline cam').style.left=(O.x1*100)+'%';
+    if(O.camOn){
+      /* 基準の縦線。測定前でも出し、ドラッグしてボールに合わせられるようにする */
+      var cl=A.ov.el(p1,'vline cam',O.x1==null?'ここに合わせる':null);
+      cl.addEventListener('pointerdown',function(ev){
+        A.dragX(ev,p1.vp,function(x){O.camX=x;place();});
+      });
+      /* 背景を隠す縦帯。動く背景が視界から外れると、ボールの動きが鉛直だけに見える */
+      if(O.maskOn){A.ov.el(p1,'mask ml');A.ov.el(p1,'mask mr');}
+    }
     if(!O.camOn&&O.x1!=null){var d1=A.ov.el(p1,'dot d1');d1.style.left=(O.x1*100)+'%';d1.style.top=(O.y1*100)+'%';}
     if(!O.camOn&&O.x2!=null){var d2=A.ov.el(p1,'dot d2');d2.style.left=(O.x2*100)+'%';d2.style.top=(O.y2*100)+'%';}
     if(O.showPred&&O.x1!=null)A.ov.el(p1,'tri');
@@ -221,8 +289,23 @@ function paint(){
 }
 function place(){
   /* カメラのパンとミラーの反転 */
-  A.applyTransform(P1(),(A.S.tab==='h'&&O.camOn)?(-(O.vx*(A.S.s-O.sMark))*100):0);
+  var cam=(A.S.tab==='h'&&O.camOn);
+  A.applyTransform(P1(),cam?(-(O.vx*(A.S.s-O.sMark))*100):0);
   A.applyTransform(P2(),0,(A.S.tab==='v'&&O.flip)?O.apexX:null);
+  /* カメラが動いていることを画面に明示する（背景を隠すときこそ必要） */
+  var badge=document.querySelector('[data-cam="O1"]');
+  if(badge){
+    badge.classList.toggle('hidden',!cam);
+    if(cam)badge.textContent=(O.vx>=0?'カメラ →':'← カメラ')+' '+Math.abs(O.vx).toFixed(2)+' 画面幅/秒';
+  }
+  var cline=P1().ovl.querySelector('.cam');
+  if(cline)cline.style.left=(O.camX*100)+'%';
+  if(cam&&O.maskOn){
+    var c=O.camX, w=O.maskW, o=String(O.maskOp);
+    var l=P1().ovl.querySelector('.ml'), r=P1().ovl.querySelector('.mr');
+    if(l){l.style.left='0';l.style.width=(Math.max(0,c-w/2)*100)+'%';l.style.background='rgba(0,0,0,'+o+')';}
+    if(r){r.style.left=(Math.min(1,c+w/2)*100)+'%';r.style.right='0';r.style.background='rgba(0,0,0,'+o+')';}
+  }
   if(A.S.tab==='h'){
     var tri=P1().ovl.querySelector('.tri');
     if(tri&&O.x1!=null){
@@ -245,14 +328,16 @@ $('#obSave').addEventListener('click',function(){
   A.download('shaho-kansatsu.json',{app:'projectile-lab',part:'observe',version:2,
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
     x1:O.x1,y1:O.y1,x2:O.x2,y2:O.y2,sMark:O.sMark,vx:O.vx,vxAuto:O.vxAuto,
-    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,name:P1().name});
+    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,
+    camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,name:P1().name});
   $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
 });
 $('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jsonIn').click();});
 A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
-  ['fStart','fApex','fEnd','x1','y1','x2','y2','sMark','vx','vxAuto','apexX','hgY'].forEach(function(k){
+  ['fStart','fApex','fEnd','x1','y1','x2','y2','sMark','vx','vxAuto','apexX','hgY',
+   'camX','maskW','maskOp'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
   if(d.mir)O.mir=d.mir;
   if(typeof d.flip==='boolean'){O.flip=d.flip;$('#obFlip').checked=d.flip;}
@@ -276,7 +361,11 @@ $('#obHandoff').addEventListener('click',function(){
 /* ---------- モード定義 ---------- */
 var mode={
   players:['O1','O2'],
-  activePanels:function(){return A.S.tab==='v'?['O1','O2']:['O1'];},
+  activePanels:function(){
+    if(A.S.tab==='v')return ['O1','O2'];
+    if(A.S.tab==='h'&&O.camOn&&O.sbs)return ['O1','O2'];
+    return ['O1'];
+  },
   allowNative:false,        /* 逆再生を含むので、必ずシークで同期する */
   loadTitle:'斜方投射の動画を読み込む',
   loadLead:'投げ上げたボールの動きを、水平方向と鉛直方向に分けて見ます。',
@@ -312,7 +401,10 @@ var mode={
       if(A.S.tab==='v')return A.FT(O.fApex)+A.S.s;
       return A.FT(O.fStart)+A.S.s;
     }
-    if(pid==='O2'&&A.S.tab==='v')return A.FT(O.fApex)-A.S.s;
+    if(pid==='O2'){
+      if(A.S.tab==='v')return A.FT(O.fApex)-A.S.s;
+      if(A.S.tab==='h'&&O.camOn&&O.sbs)return A.FT(O.fStart)+A.S.s;
+    }
     return null;
   },
   readout:function(){

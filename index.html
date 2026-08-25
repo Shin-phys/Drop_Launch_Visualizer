@@ -126,11 +126,11 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 .vp{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;touch-action:none}
 .vp.crosshair{cursor:crosshair}
 .vp.movable{cursor:ns-resize}
-.vp video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
-.chip{position:absolute;left:6px;top:6px;z-index:4;font-size:.76rem;font-weight:700;
+.vp video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;pointer-events:none}
+.chip{position:absolute;left:6px;top:6px;z-index:10;font-size:.76rem;font-weight:700;
   padding:1px 9px;border-radius:6px;background:rgba(77,163,255,.92);color:#08111c;pointer-events:none}
 .chip.r{background:rgba(255,204,77,.92);color:#241c00}
-.fnum{position:absolute;left:6px;bottom:6px;z-index:4;background:rgba(0,0,0,.62);
+.fnum{position:absolute;left:6px;bottom:6px;z-index:10;background:rgba(0,0,0,.62);
   font-size:.74rem;padding:1px 8px;border-radius:6px;pointer-events:none;font-variant-numeric:tabular-nums}
 .hintbar{position:absolute;left:0;right:0;bottom:0;z-index:5;background:rgba(10,14,20,.86);
   padding:5px 10px;font-size:.82rem;color:#cfe0f5;text-align:center}
@@ -161,6 +161,24 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 .dot.d1{background:var(--ok)} .dot.d2{background:var(--acc2)}
 .tri{position:absolute;top:0;width:0;height:0;border-left:9px solid transparent;
   border-right:9px solid transparent;border-top:14px solid var(--pred);margin-left:-9px}
+
+/* 背景を隠す縦帯（追いかけカメラ用） */
+.mask{position:absolute;top:0;bottom:0;pointer-events:none}
+/* カメラが動いていることの表示 */
+.cambadge{position:absolute;right:6px;bottom:6px;z-index:10;background:rgba(77,163,255,.92);
+  color:#08111c;font-size:.74rem;font-weight:700;padding:1px 8px;border-radius:6px;
+  pointer-events:none;font-variant-numeric:tabular-nums}
+/* 拡大コントロール */
+.zoomctl{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line);
+  border-radius:11px;padding:3px 6px}
+.zoomctl b{font-variant-numeric:tabular-nums;font-size:.85rem;min-width:38px;text-align:center}
+.zoomctl .btn{min-height:38px;padding:4px 8px}
+/* スマホ用：パネルの隅のワンタップ拡大（1× → 2× → 3× → 1×） */
+.zoombtn{display:none;position:absolute;right:6px;top:6px;z-index:12;
+  background:rgba(20,26,36,.85);color:var(--fg);border:1px solid var(--line);
+  border-radius:9px;min-width:44px;min-height:40px;font-weight:700;font-size:.85rem;cursor:pointer}
+body.compact .zoombtn{display:block}
+body.compact .zoomctl{display:none}
 
 /* ---- 操作バー ---- */
 .transport{background:#131924;border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
@@ -269,6 +287,10 @@ body.compact .seekrow{margin-top:6px}
 body.compact .transport .row{flex-wrap:nowrap}
 body.compact #btnPlay{flex:1;min-width:0}
 body.compact #rateSeg{display:none}
+body.compact .zoomctl{padding:2px 4px;gap:2px}
+body.compact .zoomctl b{min-width:32px;font-size:.78rem}
+body.compact .zoomctl .btn{min-height:40px;padding:3px 7px;font-size:.85rem}
+body.compact .transport .row{flex-wrap:wrap}
 body.compact #btnRate{display:inline-block;flex:0 0 auto;min-width:62px;padding:8px 6px}
 body.compact #panes{flex:1 1 auto;min-height:118px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
 body.compact .tabpane{border-radius:10px;padding:12px}
@@ -421,19 +443,19 @@ body.compact .subcard{padding:10px}
   <div class="stage one" id="stage">
     <div class="panel off" data-side="O1">
       <div class="vp" data-vp="O1"><video data-video="O1" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="O1"></div></div>
-      <span class="chip" data-chip="O1">映像</span><span class="fnum" data-fnum="O1">0</span>
+      <span class="chip" data-chip="O1">映像</span><span class="cambadge hidden" data-cam="O1"></span><span class="fnum" data-fnum="O1">0</span><button class="zoombtn" data-zoombtn="O1">1×</button>
     </div>
     <div class="panel off" data-side="O2">
       <div class="vp" data-vp="O2"><video data-video="O2" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="O2"></div></div>
-      <span class="chip r" data-chip="O2">逆再生（上り）</span><span class="fnum" data-fnum="O2">0</span>
+      <span class="chip r" data-chip="O2">逆再生（上り）</span><span class="fnum" data-fnum="O2">0</span><button class="zoombtn" data-zoombtn="O2">1×</button>
     </div>
     <div class="panel off" data-side="L">
       <div class="vp" data-vp="L"><video data-video="L" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="L"></div></div>
-      <span class="chip" data-chip="L">左 自由落下</span><span class="fnum" data-fnum="L">0</span>
+      <span class="chip" data-chip="L">左 自由落下</span><span class="fnum" data-fnum="L">0</span><button class="zoombtn" data-zoombtn="L">1×</button>
     </div>
     <div class="panel off" data-side="R">
       <div class="vp" data-vp="R"><video data-video="R" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="R"></div></div>
-      <span class="chip r" data-chip="R">右 斜方投射</span><span class="fnum" data-fnum="R">0</span>
+      <span class="chip r" data-chip="R">右 斜方投射</span><span class="fnum" data-fnum="R">0</span><button class="zoombtn" data-zoombtn="R">1×</button>
     </div>
     <div class="hintbar hidden" id="hintbar"></div>
   </div>
@@ -451,6 +473,12 @@ body.compact .subcard{padding:10px}
         <button data-rate="0.25">×1/4</button><button data-rate="0.125">×1/8</button>
       </div>
       <button class="btn" id="btnRate">×1</button>
+      <span class="zoomctl">
+        <button class="btn sm" id="zoomOut" title="縮小">🔍−</button>
+        <b id="zoomVal">1.0×</b>
+        <button class="btn sm" id="zoomIn" title="拡大">🔍＋</button>
+        <button class="btn sm" id="zoomReset" title="等倍に戻す">⤢</button>
+      </span>
     </div>
     <div class="seekrow">
       <span class="mut small" id="seekLab">位置</span>
@@ -458,6 +486,9 @@ body.compact .subcard{padding:10px}
       <span class="tv" id="tRead">0</span>
     </div>
     <div class="jog" id="jog">← 指でなぞるとコマ送り →</div>
+    <p class="mut small hidden" id="zoomHint" style="margin:6px 0 0">
+      拡大中です。映像を指でなぞると<b>表示位置が動きます</b>（コマ送りは −1／＋1 ボタンで）。
+      2本指でつまんでも拡大・縮小できます。</p>
     <p class="mut small" id="kbHint" style="margin:6px 0 0">
       <kbd>←</kbd><kbd>→</kbd> でコマ送り（<kbd>Shift</kbd>で10コマ）、<kbd>Space</kbd>で再生／一時停止。
       映像の上を横になぞってもコマ送りできます。
@@ -488,18 +519,39 @@ body.compact .subcard{padding:10px}
 </div>
 
 <div class="tabpane hidden" data-pane="observe:h">
-  <p style="margin-top:0">水平方向にはどんな法則がありそうですか。<b>まず予想してから</b>、測ってみましょう。</p>
+  <p style="margin-top:0"><b>ボールが真上に上がって、真下に落ちるように見える</b>ようにカメラを動かせますか。
+    まずは速さをいろいろ変えて探してみてください。</p>
+
   <div class="subcard">
-    <h3>Δt（時間のものさし）を決める</h3>
+    <h3>1. カメラでボールを追いかける</h3>
+    <div class="row">
+      <button class="btn warn" id="obCam">カメラを動かす</button>
+      <button class="btn sm" id="obCamAuto" disabled>測った値に合わせる</button>
+    </div>
+    <div class="slider" style="margin-top:8px"><span>カメラの速さ</span>
+      <input type="range" id="obCamV" min="-1.5" max="1.5" step="0.005" value="0">
+      <span class="v"><b id="obCamVv">0.00</b></span></div>
+    <p class="mut small" style="margin:0">単位は「画面幅／秒」。ひとつの速さで最後までボールが青い線に乗れば、水平方向は等速です。</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn sm" id="obMask">背景を隠す</button>
+      <button class="btn sm" id="obSbs">もとの映像と並べる</button>
+    </div>
+    <div id="obMaskRow" class="hidden">
+      <div class="slider"><span>帯の幅</span><input type="range" id="obMaskW" min="0.03" max="0.5" step="0.01" value="0.12"><span class="v"><b id="obMaskWv">12%</b></span></div>
+      <div class="slider"><span>外の濃さ</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.55"><span class="v"><b id="obMaskOpv">55%</b></span></div>
+      <p class="mut small" style="margin:0">速さを探すときは薄く（外れた向きが見えます）、決まったら濃くすると鉛直の運動だけが残ります。</p>
+    </div>
+    <p class="mut small" style="margin:8px 0 0" id="obCamMsg"></p>
+  </div>
+
+  <div class="subcard">
+    <h3>2. その速さを数字にする</h3>
     <div class="row"><span class="small">Δt ＝</span><select id="obDtSel"></select>
       <span class="big" id="obDtRead">—</span></div>
-    <p class="mut small" style="margin:8px 0 0">
+    <p class="mut small" style="margin:6px 0 10px">
       「1コマ」は端末によって 1/30 秒だったり 1/240 秒だったりします。そこで観察の単位には
       <b>Δt ＝ 何コマ分</b>という時間を使い、コマ数と秒の両方を表示します。
       <b>等速かどうかの判定は fps に関係しません</b>。fps が効くのは「Δt が何秒か」を数値で言うときだけです。</p>
-  </div>
-  <div class="subcard">
-    <h3>ボールの位置を2回はかる</h3>
     <div class="stepline"><span class="num" id="obM1">1</span>
       <button class="btn" id="obMeas1">① いまのボールの位置をクリック</button>
       <span class="mut small" id="obMeas1v">—</span></div>
@@ -507,25 +559,18 @@ body.compact .subcard{padding:10px}
       <button class="btn" id="obMeas2" disabled>② Δt 後のボールの位置をクリック</button>
       <span class="mut small" id="obMeas2v">—</span></div>
     <div class="row"><button class="btn sm" id="obMeasReset">はかり直す</button>
-      <span class="mut small">クリック（タップ）した点が印になります</span></div>
+      <span class="mut small">拡大しておくと選びやすくなります</span></div>
     <div class="note good small hidden" id="obMeasOut" style="margin-top:10px"></div>
+    <div class="note small hidden" id="obCompare" style="margin-top:8px"></div>
   </div>
+
   <div class="subcard">
-    <h3>確かめる</h3>
+    <h3>3. 確かめる</h3>
     <div class="row">
       <button class="btn warn" id="obGrid" disabled>この間隔で縦線を引く</button>
       <button class="btn" id="obPred" disabled>予想の位置を出す</button>
     </div>
     <p class="mut small" style="margin:8px 0 0">水平方向が等速なら、再生すると <b>Δt ごとにちょうど1本ずつ</b>線を通過するはずです。ずれたら等速ではありません。</p>
-    <h3>追いかけカメラ</h3>
-    <div class="row"><button class="btn" id="obCam" disabled>カメラでボールを追う</button>
-      <span class="mut small">画面を横に動かして、ボールが真上に上がって見えるか確かめます</span></div>
-    <div class="slider" style="margin-top:8px"><span>カメラの速さ</span>
-      <input type="range" id="obCamV" min="0" max="2.5" step="0.005" value="0">
-      <span class="v"><b id="obCamVv">0.00</b></span></div>
-    <div class="row"><button class="btn sm" id="obCamAuto">測った値に戻す</button>
-      <span class="mut small">単位は「画面幅／秒」</span></div>
-    <p class="mut small" style="margin:8px 0 0" id="obCamMsg"></p>
   </div>
 </div>
 
@@ -953,10 +998,17 @@ A.attachStageGesture = function(p,opt){
   });
   p.vp.addEventListener('pointermove',function(e){
     if(!g.on)return;
+    if(A.pointerCount&&A.pointerCount()>1)return;   /* つまむ操作の最中は動かさない */
     var dx=e.clientX-g.x0, dy=e.clientY-g.y0;
     if(!g.axis){
       if(Math.abs(dx)<9&&Math.abs(dy)<9)return;
       g.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
+    }
+    if(A.zoomed()){
+      var r0=p.vp.getBoundingClientRect();
+      A.setZoom(A.view.z, A.view.cx-(e.clientX-g.x0)/r0.width, A.view.cy-(e.clientY-g.y0)/r0.height);
+      g.x0=e.clientX; g.y0=e.clientY;
+      return;
     }
     if(g.axis==='x'&&opt.onJog){
       var n=(dx<0?Math.ceil(dx/A.PX_PER_FRAME):Math.floor(dx/A.PX_PER_FRAME));
@@ -968,6 +1020,83 @@ A.attachStageGesture = function(p,opt){
   });
   ['pointerup','pointercancel'].forEach(function(ev){
     p.vp.addEventListener(ev,function(){g.on=false;g.axis=null;});
+  });
+};
+
+/* ---------- 長押しで連打 ----------
+   スマホでは click だけだと押しっぱなしが効かないので、
+   押している間くり返す。 */
+A.attachRepeat=function(el,fn){
+  var t=null,iv=null;
+  function stop(){clearTimeout(t);clearInterval(iv);t=null;iv=null;}
+  el.addEventListener('pointerdown',function(e){
+    if(el.disabled)return;
+    e.preventDefault();
+    try{el.setPointerCapture(e.pointerId);}catch(err){}
+    fn(); A.vib();
+    t=setTimeout(function(){iv=setInterval(function(){
+      if(el.disabled){stop();return;}
+      fn(); A.vib(3);
+    },90);},420);
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){el.addEventListener(ev,stop);});
+  el.addEventListener('click',function(e){e.preventDefault();});
+};
+
+/* ---------- 拡大（ズーム） ----------
+   .vp ごと拡大するので、映像とオーバーレイ（線・点）が一緒に動き、ずれません。
+   クリック位置は getBoundingClientRect() の中での割合で取っているので、
+   拡大していても計算は変わりません。 */
+A.view={z:1,cx:0.5,cy:0.5};
+A.ZMAX=6;
+A.applyView=function(){
+  var v=A.view;
+  Object.keys(A.players).forEach(function(k){
+    var p=A.players[k];
+    p.vp.style.transformOrigin=(v.cx*100)+'% '+(v.cy*100)+'%';
+    p.vp.style.transform=(v.z===1)?'none':('scale('+v.z+')');
+  });
+  A.emit('view');
+};
+A.setZoom=function(z,cx,cy){
+  var v=A.view;
+  v.z=A.clamp(z,1,A.ZMAX);
+  if(v.z===1){v.cx=0.5;v.cy=0.5;}
+  else{
+    if(cx!=null)v.cx=A.clamp(cx,0,1);
+    if(cy!=null)v.cy=A.clamp(cy,0,1);
+  }
+  A.applyView();
+};
+A.zoomed=function(){return A.view.z>1.001;};
+/* 2本指でつまむ拡大と、拡大中の1本指での移動 */
+var zpts={};                       /* いま触れている指（全パネル共通） */
+A.pointerCount=function(){return Object.keys(zpts).length;};
+A.attachZoomGesture=function(p){
+  var pts=zpts,base=null;
+  function list(){var a=[];for(var k in pts)a.push(pts[k]);return a;}
+  p.vp.addEventListener('pointerdown',function(e){
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    var a=list();
+    if(a.length===2){
+      var r=p.vp.getBoundingClientRect();
+      base={d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),z:A.view.z,
+            cx:A.clamp(((a[0].x+a[1].x)/2-r.left)/r.width,0,1),
+            cy:A.clamp(((a[0].y+a[1].y)/2-r.top)/r.height,0,1)};
+      if(base.d<1)base=null;
+    }
+  });
+  p.vp.addEventListener('pointermove',function(e){
+    if(!pts[e.pointerId])return;
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    var a=list();
+    if(a.length===2&&base){
+      var d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+      A.setZoom(base.z*(d/base.d),base.cx,base.cy);
+    }
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){
+    p.vp.addEventListener(ev,function(e){delete pts[e.pointerId];if(list().length<2)base=null;});
   });
 };
 
@@ -1144,7 +1273,7 @@ A.fpsHint=fpsHint;
 $('#btnPlay').addEventListener('click',A.togglePlay);
 $('#btnHead').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;if(A.mode().onHead)A.mode().onHead();});
 $$('[data-step]').forEach(function(b){
-  b.addEventListener('click',function(){A.step(parseInt(b.getAttribute('data-step'),10));A.vib();});
+  A.attachRepeat(b,function(){A.step(parseInt(b.getAttribute('data-step'),10));});
 });
 $('#seek').addEventListener('input',function(){
   if(A.mode().onSeek)A.mode().onSeek();
@@ -1184,6 +1313,29 @@ document.addEventListener('keydown',function(e){
   else if(e.key==='ArrowLeft'){e.preventDefault();A.step(-n);}
   else if(e.key===' '||e.key==='Spacebar'){e.preventDefault();A.togglePlay();}
   else if(e.key==='Escape'&&A.mode().onEscape)A.mode().onEscape();
+});
+
+/* ---------- 拡大 ---------- */
+Object.keys(A.players).forEach(function(k){A.attachZoomGesture(A.P(k));});
+function zoomStep(f){
+  var v=A.view;
+  A.setZoom(v.z*f,v.cx,v.cy);
+}
+$('#zoomIn').addEventListener('click',function(){zoomStep(1.4);});
+$('#zoomOut').addEventListener('click',function(){zoomStep(1/1.4);});
+$('#zoomReset').addEventListener('click',function(){A.setZoom(1);});
+$$('[data-zoombtn]').forEach(function(b){
+  b.addEventListener('click',function(e){
+    e.stopPropagation();
+    var z=A.view.z;
+    A.setZoom(z<1.5?2:(z<2.5?3:1),0.5,0.5);
+  });
+});
+A.on('view',function(){
+  $$('[data-zoombtn]').forEach(function(b){b.textContent=Math.round(A.view.z)+'×';});
+  $('#zoomVal').textContent=A.view.z.toFixed(1)+'×';
+  $('#zoomReset').classList.toggle('ok',A.zoomed());
+  A.show('#zoomHint',A.zoomed());
 });
 
 /* ---------- 表示の更新 ---------- */
@@ -1306,7 +1458,8 @@ var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
 
 var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,
   x1:null,y1:null,x2:null,y2:null,sMark:0,arm:0,
-  showGrid:false,showPred:false,camOn:false,vx:0,vxAuto:0,
+  showGrid:false,showPred:false,camOn:false,vx:0,vxAuto:0,vxManual:null,
+  maskOn:false,maskW:0.12,maskOp:0.55,sbs:false,camX:0.5,
   mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4};
 A.O=O;
 var P1=function(){return A.P('O1');}, P2=function(){return A.P('O2');};
@@ -1362,16 +1515,16 @@ $('#obRangeReset').addEventListener('click',function(){O.fStart=O.fApex=O.fEnd=n
 
 /* ---------- 位置をはかる ---------- */
 function resetMeasure(){
-  O.x1=O.y1=O.x2=O.y2=null;O.arm=0;O.showGrid=false;O.showPred=false;O.camOn=false;O.vx=0;O.vxAuto=0;
+  O.x1=O.y1=O.x2=O.y2=null;O.arm=0;O.showGrid=false;O.showPred=false;O.vxAuto=0;O.vxManual=null;
+  O.camX=0.5;
   $('#obMeas1v').textContent='—';$('#obMeas2v').textContent='—';
   $('#obM1').classList.remove('done');$('#obM2').classList.remove('done');
-  $('#obMeas2').disabled=true;$('#obMeasOut').classList.add('hidden');
-  ['#obGrid','#obPred','#obCam'].forEach(function(s){$(s).disabled=true;$(s).classList.remove('ok');});
-  $('#obGrid').textContent='この間隔で縦線を引く';
-  $('#obPred').textContent='予想の位置を出す';
-  $('#obCam').textContent='カメラでボールを追う';
-  $('#obCamMsg').textContent='';
-  armUI(); paint();
+  $('#obMeas2').disabled=true;
+  $('#obMeasOut').classList.add('hidden');
+  $('#obCompare').classList.add('hidden');
+  ['#obGrid','#obPred'].forEach(function(x){$(x).disabled=true;$(x).classList.remove('ok');});
+  $('#obCamAuto').disabled=true;
+  syncHButtons(); armUI(); paint();
 }
 function armUI(){A.ov.arm(O.arm>0);
   $('#obMeas1').classList.toggle('warn',O.arm===1);
@@ -1383,11 +1536,22 @@ $('#obMeas1').addEventListener('click',function(){O.arm=1;armUI();});
 $('#obMeas2').addEventListener('click',function(){O.arm=2;armUI();});
 $('#obApexPick').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;O.arm=3;armUI();});
 
+/* 押した位置と離した位置がほぼ同じ（＝タップ）のときだけ点を取る。
+   こうしておくと、拡大中に指でなぞって移動しても誤って点が入らない。 */
+function pickDown(pid){
+  return function(e){
+    if(A.S.mode!=='observe'||!O.arm)return;
+    O._px=e.clientX; O._py=e.clientY;
+  };
+}
 function pick(pid){
   return function(e){
     if(A.S.mode!=='observe'||!O.arm)return;
     if(pid==='O2'&&O.arm!==3)return;
     if(A.isOverlayEl(e.target))return;
+    if(O._px==null)return;
+    if(Math.abs(e.clientX-O._px)>8||Math.abs(e.clientY-O._py)>8){O._px=null;return;}
+    O._px=null;
     var vp=A.P(pid).vp, r=vp.getBoundingClientRect();
     var x=clamp((e.clientX-r.left)/r.width,0,1), y=clamp((e.clientY-r.top)/r.height,0,1);
     if(O.arm===1){
@@ -1410,20 +1574,41 @@ function pick(pid){
     paint();
   };
 }
-['O1','O2'].forEach(function(id){A.P(id).vp.addEventListener('pointerdown',pick(id));});
+['O1','O2'].forEach(function(id){
+  A.P(id).vp.addEventListener('pointerdown',pickDown(id));
+  A.P(id).vp.addEventListener('pointerup',pick(id));
+});
 
 function finishMeasure(){
   var d=O.x2-O.x1;
-  O.vxAuto=d/dtSec(); O.vx=O.vxAuto;
+  if(O.vxManual===null)O.vxManual=O.vx;      /* 生徒が自分で合わせた値を控えておく */
+  O.vxAuto=d/dtSec();
+  /* カメラをまだ触っていない場合だけ、測った値を入れておく
+     （自分で合わせた値があるときは上書きしない。それが答え合わせになるので） */
+  if(Math.abs(O.vxManual)<0.01)O.vx=O.vxAuto;
+  O.camX=O.x1;
   $('#obMeasOut').classList.remove('hidden');
   $('#obMeasOut').innerHTML='Δt ＝ <b>'+O.dtF+' コマ ＝ '+f3(dtSec())+' 秒</b> のあいだに、'+
     'ボールは横に <b>画面幅の '+(Math.abs(d)*100).toFixed(1)+'%</b> 進みました。<br>'+
     'つまり水平方向の速さは <b>'+Math.abs(O.vxAuto).toFixed(2)+' 画面幅/秒</b>。'+
     'この速さがずっと変わらないなら、水平方向は等速直線運動です。';
-  ['#obGrid','#obPred','#obCam'].forEach(function(s){$(s).disabled=false;});
-  var cv=$('#obCamV'), lim=Math.max(0.2,Math.abs(O.vxAuto)*2.5);
+  ['#obGrid','#obPred'].forEach(function(x){$(x).disabled=false;});
+  $('#obCamAuto').disabled=false;
+  var cv=$('#obCamV'), lim=Math.max(0.5,Math.abs(O.vxAuto)*2.5);
   cv.min=String(-lim); cv.max=String(lim); cv.value=String(O.vx);
   $('#obCamVv').textContent=O.vx.toFixed(2);
+  showCompare();
+}
+/* 自分で合わせた速さと、測って出した速さを並べる（測定が答え合わせになる） */
+function showCompare(){
+  var man=O.vxManual;
+  if(man==null||Math.abs(man)<0.01){$('#obCompare').classList.add('hidden');return;}
+  var diff=Math.abs(man-O.vxAuto)/Math.abs(O.vxAuto)*100;
+  $('#obCompare').classList.remove('hidden');
+  $('#obCompare').innerHTML='自分で合わせた速さ <b>'+Math.abs(man).toFixed(2)+'</b> ／ '+
+    '測って出した速さ <b>'+Math.abs(O.vxAuto).toFixed(2)+'</b> 画面幅/秒　'+
+    '（ちがい <b>'+diff.toFixed(0)+'%</b>）'+
+    (diff<10?'　目で合わせた速さは、測った値とほぼ同じでした。':'');
 }
 $('#obGrid').addEventListener('click',function(){
   O.showGrid=!O.showGrid; if(O.showGrid)O.camOn=false; syncHButtons(); paint();
@@ -1431,9 +1616,22 @@ $('#obGrid').addEventListener('click',function(){
 $('#obPred').addEventListener('click',function(){O.showPred=!O.showPred;syncHButtons();paint();});
 $('#obCam').addEventListener('click',function(){
   O.camOn=!O.camOn; if(O.camOn)O.showGrid=false;
+  if(O.camOn&&O.x1==null)O.sMark=A.S.s;   /* 測定前は、いま見ているコマを基準にする */
   $('#obCamMsg').textContent=O.camOn
     ?'ボールが青い線の上を、まっすぐ上下するように速さを合わせてください。ひとつの速さで最後まで線に乗れば、水平方向は等速です。':'';
-  syncHButtons(); paint();
+  syncHButtons(); A.syncPanels(); setStage();
+});
+$('#obMask').addEventListener('click',function(){
+  O.maskOn=!O.maskOn; A.show('#obMaskRow',O.maskOn); syncHButtons(); paint();
+});
+$('#obMaskW').addEventListener('input',function(){
+  O.maskW=parseFloat(this.value);$('#obMaskWv').textContent=Math.round(O.maskW*100)+'%';place();
+});
+$('#obMaskOp').addEventListener('input',function(){
+  O.maskOp=parseFloat(this.value);$('#obMaskOpv').textContent=Math.round(O.maskOp*100)+'%';place();
+});
+$('#obSbs').addEventListener('click',function(){
+  O.sbs=!O.sbs; syncHButtons(); A.syncPanels(); setStage();
 });
 function syncHButtons(){
   $('#obGrid').classList.toggle('ok',O.showGrid);
@@ -1441,13 +1639,23 @@ function syncHButtons(){
   $('#obPred').classList.toggle('ok',O.showPred);
   $('#obPred').textContent=O.showPred?'予想の位置を消す':'予想の位置を出す';
   $('#obCam').classList.toggle('ok',O.camOn);
-  $('#obCam').textContent=O.camOn?'カメラを止める':'カメラでボールを追う';
+  $('#obCam').textContent=O.camOn?'カメラを止める':'カメラを動かす';
+  $('#obMask').classList.toggle('ok',O.maskOn);
+  $('#obMask').textContent=O.maskOn?'背景を出す':'背景を隠す';
+  $('#obSbs').classList.toggle('ok',O.sbs);
+  $('#obSbs').textContent=O.sbs?'並べるのをやめる':'もとの映像と並べる';
+  $('#obMask').disabled=!O.camOn;
+  $('#obSbs').disabled=!O.camOn;
+  if(!O.camOn)A.show('#obMaskRow',false);
 }
 $('#obCamV').addEventListener('input',function(){
   O.vx=parseFloat(this.value);$('#obCamVv').textContent=O.vx.toFixed(2);
+  if(O.vxAuto)showCompare();
 });
 $('#obCamAuto').addEventListener('click',function(){
+  if(O.vxManual===null)O.vxManual=O.vx;
   O.vx=O.vxAuto;$('#obCamV').value=String(O.vx);$('#obCamVv').textContent=O.vx.toFixed(2);
+  showCompare();
 });
 
 /* ---------- ミラー再生 ---------- */
@@ -1471,11 +1679,15 @@ $('#obHG').addEventListener('click',function(){
 /* ---------- 描画 ---------- */
 function setStage(){
   var st=$('#stage'), tab=A.S.tab;
-  st.className='stage '+(tab==='v'?(O.mir==='over'?'over':'side'):'one');
+  var two=(tab==='v')||(tab==='h'&&O.camOn&&O.sbs);
+  st.className='stage '+(tab==='v'?(O.mir==='over'?'over':'side'):(two?'side':'one'));
   st.style.setProperty('--ovop',String(O.ovop));
   A.syncPanels();
   document.querySelector('.panel[data-side="O2"]').classList.toggle('dim',tab==='v'&&O.mir==='over');
-  document.querySelector('[data-chip="O1"]').textContent=(tab==='v')?'下り（+t）':'映像';
+  document.querySelector('[data-chip="O1"]').textContent=
+    (tab==='v')?'下り（+t）':(two?'追いかけカメラ':'映像');
+  document.querySelector('[data-chip="O2"]').textContent=
+    (tab==='v')?'逆再生（上り）':'もとの映像';
   paint();
 }
 function paint(){
@@ -1495,7 +1707,15 @@ function paint(){
         }
       }
     }
-    if(O.camOn&&O.x1!=null)A.ov.el(p1,'vline cam').style.left=(O.x1*100)+'%';
+    if(O.camOn){
+      /* 基準の縦線。測定前でも出し、ドラッグしてボールに合わせられるようにする */
+      var cl=A.ov.el(p1,'vline cam',O.x1==null?'ここに合わせる':null);
+      cl.addEventListener('pointerdown',function(ev){
+        A.dragX(ev,p1.vp,function(x){O.camX=x;place();});
+      });
+      /* 背景を隠す縦帯。動く背景が視界から外れると、ボールの動きが鉛直だけに見える */
+      if(O.maskOn){A.ov.el(p1,'mask ml');A.ov.el(p1,'mask mr');}
+    }
     if(!O.camOn&&O.x1!=null){var d1=A.ov.el(p1,'dot d1');d1.style.left=(O.x1*100)+'%';d1.style.top=(O.y1*100)+'%';}
     if(!O.camOn&&O.x2!=null){var d2=A.ov.el(p1,'dot d2');d2.style.left=(O.x2*100)+'%';d2.style.top=(O.y2*100)+'%';}
     if(O.showPred&&O.x1!=null)A.ov.el(p1,'tri');
@@ -1518,8 +1738,23 @@ function paint(){
 }
 function place(){
   /* カメラのパンとミラーの反転 */
-  A.applyTransform(P1(),(A.S.tab==='h'&&O.camOn)?(-(O.vx*(A.S.s-O.sMark))*100):0);
+  var cam=(A.S.tab==='h'&&O.camOn);
+  A.applyTransform(P1(),cam?(-(O.vx*(A.S.s-O.sMark))*100):0);
   A.applyTransform(P2(),0,(A.S.tab==='v'&&O.flip)?O.apexX:null);
+  /* カメラが動いていることを画面に明示する（背景を隠すときこそ必要） */
+  var badge=document.querySelector('[data-cam="O1"]');
+  if(badge){
+    badge.classList.toggle('hidden',!cam);
+    if(cam)badge.textContent=(O.vx>=0?'カメラ →':'← カメラ')+' '+Math.abs(O.vx).toFixed(2)+' 画面幅/秒';
+  }
+  var cline=P1().ovl.querySelector('.cam');
+  if(cline)cline.style.left=(O.camX*100)+'%';
+  if(cam&&O.maskOn){
+    var c=O.camX, w=O.maskW, o=String(O.maskOp);
+    var l=P1().ovl.querySelector('.ml'), r=P1().ovl.querySelector('.mr');
+    if(l){l.style.left='0';l.style.width=(Math.max(0,c-w/2)*100)+'%';l.style.background='rgba(0,0,0,'+o+')';}
+    if(r){r.style.left=(Math.min(1,c+w/2)*100)+'%';r.style.right='0';r.style.background='rgba(0,0,0,'+o+')';}
+  }
   if(A.S.tab==='h'){
     var tri=P1().ovl.querySelector('.tri');
     if(tri&&O.x1!=null){
@@ -1542,14 +1777,16 @@ $('#obSave').addEventListener('click',function(){
   A.download('shaho-kansatsu.json',{app:'projectile-lab',part:'observe',version:2,
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
     x1:O.x1,y1:O.y1,x2:O.x2,y2:O.y2,sMark:O.sMark,vx:O.vx,vxAuto:O.vxAuto,
-    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,name:P1().name});
+    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,
+    camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,name:P1().name});
   $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
 });
 $('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jsonIn').click();});
 A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
-  ['fStart','fApex','fEnd','x1','y1','x2','y2','sMark','vx','vxAuto','apexX','hgY'].forEach(function(k){
+  ['fStart','fApex','fEnd','x1','y1','x2','y2','sMark','vx','vxAuto','apexX','hgY',
+   'camX','maskW','maskOp'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
   if(d.mir)O.mir=d.mir;
   if(typeof d.flip==='boolean'){O.flip=d.flip;$('#obFlip').checked=d.flip;}
@@ -1573,7 +1810,11 @@ $('#obHandoff').addEventListener('click',function(){
 /* ---------- モード定義 ---------- */
 var mode={
   players:['O1','O2'],
-  activePanels:function(){return A.S.tab==='v'?['O1','O2']:['O1'];},
+  activePanels:function(){
+    if(A.S.tab==='v')return ['O1','O2'];
+    if(A.S.tab==='h'&&O.camOn&&O.sbs)return ['O1','O2'];
+    return ['O1'];
+  },
   allowNative:false,        /* 逆再生を含むので、必ずシークで同期する */
   loadTitle:'斜方投射の動画を読み込む',
   loadLead:'投げ上げたボールの動きを、水平方向と鉛直方向に分けて見ます。',
@@ -1609,7 +1850,10 @@ var mode={
       if(A.S.tab==='v')return A.FT(O.fApex)+A.S.s;
       return A.FT(O.fStart)+A.S.s;
     }
-    if(pid==='O2'&&A.S.tab==='v')return A.FT(O.fApex)-A.S.s;
+    if(pid==='O2'){
+      if(A.S.tab==='v')return A.FT(O.fApex)-A.S.s;
+      if(A.S.tab==='h'&&O.camOn&&O.sbs)return A.FT(O.fStart)+A.S.s;
+    }
     return null;
   },
   readout:function(){
@@ -1682,7 +1926,7 @@ function setActive(s){
   $$('.panel').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-side')===s);});
 }
 $$('[data-cmstep]').forEach(function(b){
-  b.addEventListener('click',function(){
+  A.attachRepeat(b,function(){
     var a=b.getAttribute('data-cmstep').split(','), p=PL(a[0]);
     if(!p.ready)return; setActive(a[0]);
     var base=p.previewing?p.video.currentTime:startTime(p)+A.S.s;
@@ -1705,7 +1949,7 @@ $$('[data-cmset]').forEach(function(b){
   });
 });
 $$('[data-cmadj]').forEach(function(b){
-  b.addEventListener('click',function(){
+  A.attachRepeat(b,function(){
     var a=b.getAttribute('data-cmadj').split(','), p=PL(a[0]); if(!p.ready)return;
     p.startFrame=Math.max(0,p.startFrame+parseInt(a[1],10));
     p.previewing=false; A.setPlaying(false);
@@ -1720,7 +1964,7 @@ function nudgeY(s,d){
   syncAdjust(); applyFit(); place();
 }
 $$('[data-cmny]').forEach(function(b){
-  b.addEventListener('click',function(){
+  A.attachRepeat(b,function(){
     var a=b.getAttribute('data-cmny').split(','); nudgeY(a[0],parseFloat(a[1]));
   });
 });

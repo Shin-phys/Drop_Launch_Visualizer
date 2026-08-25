@@ -145,7 +145,7 @@ A.fpsHint=fpsHint;
 $('#btnPlay').addEventListener('click',A.togglePlay);
 $('#btnHead').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;if(A.mode().onHead)A.mode().onHead();});
 $$('[data-step]').forEach(function(b){
-  b.addEventListener('click',function(){A.step(parseInt(b.getAttribute('data-step'),10));A.vib();});
+  A.attachRepeat(b,function(){A.step(parseInt(b.getAttribute('data-step'),10));});
 });
 $('#seek').addEventListener('input',function(){
   if(A.mode().onSeek)A.mode().onSeek();
@@ -185,6 +185,29 @@ document.addEventListener('keydown',function(e){
   else if(e.key==='ArrowLeft'){e.preventDefault();A.step(-n);}
   else if(e.key===' '||e.key==='Spacebar'){e.preventDefault();A.togglePlay();}
   else if(e.key==='Escape'&&A.mode().onEscape)A.mode().onEscape();
+});
+
+/* ---------- 拡大 ---------- */
+Object.keys(A.players).forEach(function(k){A.attachZoomGesture(A.P(k));});
+function zoomStep(f){
+  var v=A.view;
+  A.setZoom(v.z*f,v.cx,v.cy);
+}
+$('#zoomIn').addEventListener('click',function(){zoomStep(1.4);});
+$('#zoomOut').addEventListener('click',function(){zoomStep(1/1.4);});
+$('#zoomReset').addEventListener('click',function(){A.setZoom(1);});
+$$('[data-zoombtn]').forEach(function(b){
+  b.addEventListener('click',function(e){
+    e.stopPropagation();
+    var z=A.view.z;
+    A.setZoom(z<1.5?2:(z<2.5?3:1),0.5,0.5);
+  });
+});
+A.on('view',function(){
+  $$('[data-zoombtn]').forEach(function(b){b.textContent=Math.round(A.view.z)+'×';});
+  $('#zoomVal').textContent=A.view.z.toFixed(1)+'×';
+  $('#zoomReset').classList.toggle('ok',A.zoomed());
+  A.show('#zoomHint',A.zoomed());
 });
 
 /* ---------- 表示の更新 ---------- */

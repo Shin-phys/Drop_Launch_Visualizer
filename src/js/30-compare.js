@@ -45,7 +45,7 @@ function setActive(s){
   $$('.panel').forEach(function(el){el.classList.toggle('active',el.getAttribute('data-side')===s);});
 }
 $$('[data-cmstep]').forEach(function(b){
-  b.addEventListener('click',function(){
+  A.attachRepeat(b,function(){
     var a=b.getAttribute('data-cmstep').split(','), p=PL(a[0]);
     if(!p.ready)return; setActive(a[0]);
     var base=p.previewing?p.video.currentTime:startTime(p)+A.S.s;
@@ -68,7 +68,7 @@ $$('[data-cmset]').forEach(function(b){
   });
 });
 $$('[data-cmadj]').forEach(function(b){
-  b.addEventListener('click',function(){
+  A.attachRepeat(b,function(){
     var a=b.getAttribute('data-cmadj').split(','), p=PL(a[0]); if(!p.ready)return;
     p.startFrame=Math.max(0,p.startFrame+parseInt(a[1],10));
     p.previewing=false; A.setPlaying(false);
@@ -83,7 +83,7 @@ function nudgeY(s,d){
   syncAdjust(); applyFit(); place();
 }
 $$('[data-cmny]').forEach(function(b){
-  b.addEventListener('click',function(){
+  A.attachRepeat(b,function(){
     var a=b.getAttribute('data-cmny').split(','); nudgeY(a[0],parseFloat(a[1]));
   });
 });

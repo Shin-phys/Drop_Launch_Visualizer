@@ -152,19 +152,19 @@
   <div class="stage one" id="stage">
     <div class="panel off" data-side="O1">
       <div class="vp" data-vp="O1"><video data-video="O1" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="O1"></div></div>
-      <span class="chip" data-chip="O1">映像</span><span class="fnum" data-fnum="O1">0</span>
+      <span class="chip" data-chip="O1">映像</span><span class="cambadge hidden" data-cam="O1"></span><span class="fnum" data-fnum="O1">0</span><button class="zoombtn" data-zoombtn="O1">1×</button>
     </div>
     <div class="panel off" data-side="O2">
       <div class="vp" data-vp="O2"><video data-video="O2" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="O2"></div></div>
-      <span class="chip r" data-chip="O2">逆再生（上り）</span><span class="fnum" data-fnum="O2">0</span>
+      <span class="chip r" data-chip="O2">逆再生（上り）</span><span class="fnum" data-fnum="O2">0</span><button class="zoombtn" data-zoombtn="O2">1×</button>
     </div>
     <div class="panel off" data-side="L">
       <div class="vp" data-vp="L"><video data-video="L" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="L"></div></div>
-      <span class="chip" data-chip="L">左 自由落下</span><span class="fnum" data-fnum="L">0</span>
+      <span class="chip" data-chip="L">左 自由落下</span><span class="fnum" data-fnum="L">0</span><button class="zoombtn" data-zoombtn="L">1×</button>
     </div>
     <div class="panel off" data-side="R">
       <div class="vp" data-vp="R"><video data-video="R" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="R"></div></div>
-      <span class="chip r" data-chip="R">右 斜方投射</span><span class="fnum" data-fnum="R">0</span>
+      <span class="chip r" data-chip="R">右 斜方投射</span><span class="fnum" data-fnum="R">0</span><button class="zoombtn" data-zoombtn="R">1×</button>
     </div>
     <div class="hintbar hidden" id="hintbar"></div>
   </div>
@@ -182,6 +182,12 @@
         <button data-rate="0.25">×1/4</button><button data-rate="0.125">×1/8</button>
       </div>
       <button class="btn" id="btnRate">×1</button>
+      <span class="zoomctl">
+        <button class="btn sm" id="zoomOut" title="縮小">🔍−</button>
+        <b id="zoomVal">1.0×</b>
+        <button class="btn sm" id="zoomIn" title="拡大">🔍＋</button>
+        <button class="btn sm" id="zoomReset" title="等倍に戻す">⤢</button>
+      </span>
     </div>
     <div class="seekrow">
       <span class="mut small" id="seekLab">位置</span>
@@ -189,6 +195,9 @@
       <span class="tv" id="tRead">0</span>
     </div>
     <div class="jog" id="jog">← 指でなぞるとコマ送り →</div>
+    <p class="mut small hidden" id="zoomHint" style="margin:6px 0 0">
+      拡大中です。映像を指でなぞると<b>表示位置が動きます</b>（コマ送りは −1／＋1 ボタンで）。
+      2本指でつまんでも拡大・縮小できます。</p>
     <p class="mut small" id="kbHint" style="margin:6px 0 0">
       <kbd>←</kbd><kbd>→</kbd> でコマ送り（<kbd>Shift</kbd>で10コマ）、<kbd>Space</kbd>で再生／一時停止。
       映像の上を横になぞってもコマ送りできます。
@@ -219,18 +228,39 @@
 </div>
 
 <div class="tabpane hidden" data-pane="observe:h">
-  <p style="margin-top:0">水平方向にはどんな法則がありそうですか。<b>まず予想してから</b>、測ってみましょう。</p>
+  <p style="margin-top:0"><b>ボールが真上に上がって、真下に落ちるように見える</b>ようにカメラを動かせますか。
+    まずは速さをいろいろ変えて探してみてください。</p>
+
   <div class="subcard">
-    <h3>Δt（時間のものさし）を決める</h3>
+    <h3>1. カメラでボールを追いかける</h3>
+    <div class="row">
+      <button class="btn warn" id="obCam">カメラを動かす</button>
+      <button class="btn sm" id="obCamAuto" disabled>測った値に合わせる</button>
+    </div>
+    <div class="slider" style="margin-top:8px"><span>カメラの速さ</span>
+      <input type="range" id="obCamV" min="-1.5" max="1.5" step="0.005" value="0">
+      <span class="v"><b id="obCamVv">0.00</b></span></div>
+    <p class="mut small" style="margin:0">単位は「画面幅／秒」。ひとつの速さで最後までボールが青い線に乗れば、水平方向は等速です。</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn sm" id="obMask">背景を隠す</button>
+      <button class="btn sm" id="obSbs">もとの映像と並べる</button>
+    </div>
+    <div id="obMaskRow" class="hidden">
+      <div class="slider"><span>帯の幅</span><input type="range" id="obMaskW" min="0.03" max="0.5" step="0.01" value="0.12"><span class="v"><b id="obMaskWv">12%</b></span></div>
+      <div class="slider"><span>外の濃さ</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.55"><span class="v"><b id="obMaskOpv">55%</b></span></div>
+      <p class="mut small" style="margin:0">速さを探すときは薄く（外れた向きが見えます）、決まったら濃くすると鉛直の運動だけが残ります。</p>
+    </div>
+    <p class="mut small" style="margin:8px 0 0" id="obCamMsg"></p>
+  </div>
+
+  <div class="subcard">
+    <h3>2. その速さを数字にする</h3>
     <div class="row"><span class="small">Δt ＝</span><select id="obDtSel"></select>
       <span class="big" id="obDtRead">—</span></div>
-    <p class="mut small" style="margin:8px 0 0">
+    <p class="mut small" style="margin:6px 0 10px">
       「1コマ」は端末によって 1/30 秒だったり 1/240 秒だったりします。そこで観察の単位には
       <b>Δt ＝ 何コマ分</b>という時間を使い、コマ数と秒の両方を表示します。
       <b>等速かどうかの判定は fps に関係しません</b>。fps が効くのは「Δt が何秒か」を数値で言うときだけです。</p>
-  </div>
-  <div class="subcard">
-    <h3>ボールの位置を2回はかる</h3>
     <div class="stepline"><span class="num" id="obM1">1</span>
       <button class="btn" id="obMeas1">① いまのボールの位置をクリック</button>
       <span class="mut small" id="obMeas1v">—</span></div>
@@ -238,25 +268,18 @@
       <button class="btn" id="obMeas2" disabled>② Δt 後のボールの位置をクリック</button>
       <span class="mut small" id="obMeas2v">—</span></div>
     <div class="row"><button class="btn sm" id="obMeasReset">はかり直す</button>
-      <span class="mut small">クリック（タップ）した点が印になります</span></div>
+      <span class="mut small">拡大しておくと選びやすくなります</span></div>
     <div class="note good small hidden" id="obMeasOut" style="margin-top:10px"></div>
+    <div class="note small hidden" id="obCompare" style="margin-top:8px"></div>
   </div>
+
   <div class="subcard">
-    <h3>確かめる</h3>
+    <h3>3. 確かめる</h3>
     <div class="row">
       <button class="btn warn" id="obGrid" disabled>この間隔で縦線を引く</button>
       <button class="btn" id="obPred" disabled>予想の位置を出す</button>
     </div>
     <p class="mut small" style="margin:8px 0 0">水平方向が等速なら、再生すると <b>Δt ごとにちょうど1本ずつ</b>線を通過するはずです。ずれたら等速ではありません。</p>
-    <h3>追いかけカメラ</h3>
-    <div class="row"><button class="btn" id="obCam" disabled>カメラでボールを追う</button>
-      <span class="mut small">画面を横に動かして、ボールが真上に上がって見えるか確かめます</span></div>
-    <div class="slider" style="margin-top:8px"><span>カメラの速さ</span>
-      <input type="range" id="obCamV" min="0" max="2.5" step="0.005" value="0">
-      <span class="v"><b id="obCamVv">0.00</b></span></div>
-    <div class="row"><button class="btn sm" id="obCamAuto">測った値に戻す</button>
-      <span class="mut small">単位は「画面幅／秒」</span></div>
-    <p class="mut small" style="margin:8px 0 0" id="obCamMsg"></p>
   </div>
 </div>
 

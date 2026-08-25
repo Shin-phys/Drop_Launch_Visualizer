@@ -117,11 +117,11 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 .vp{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;touch-action:none}
 .vp.crosshair{cursor:crosshair}
 .vp.movable{cursor:ns-resize}
-.vp video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
-.chip{position:absolute;left:6px;top:6px;z-index:4;font-size:.76rem;font-weight:700;
+.vp video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;pointer-events:none}
+.chip{position:absolute;left:6px;top:6px;z-index:10;font-size:.76rem;font-weight:700;
   padding:1px 9px;border-radius:6px;background:rgba(77,163,255,.92);color:#08111c;pointer-events:none}
 .chip.r{background:rgba(255,204,77,.92);color:#241c00}
-.fnum{position:absolute;left:6px;bottom:6px;z-index:4;background:rgba(0,0,0,.62);
+.fnum{position:absolute;left:6px;bottom:6px;z-index:10;background:rgba(0,0,0,.62);
   font-size:.74rem;padding:1px 8px;border-radius:6px;pointer-events:none;font-variant-numeric:tabular-nums}
 .hintbar{position:absolute;left:0;right:0;bottom:0;z-index:5;background:rgba(10,14,20,.86);
   padding:5px 10px;font-size:.82rem;color:#cfe0f5;text-align:center}
@@ -152,6 +152,24 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 .dot.d1{background:var(--ok)} .dot.d2{background:var(--acc2)}
 .tri{position:absolute;top:0;width:0;height:0;border-left:9px solid transparent;
   border-right:9px solid transparent;border-top:14px solid var(--pred);margin-left:-9px}
+
+/* 背景を隠す縦帯（追いかけカメラ用） */
+.mask{position:absolute;top:0;bottom:0;pointer-events:none}
+/* カメラが動いていることの表示 */
+.cambadge{position:absolute;right:6px;bottom:6px;z-index:10;background:rgba(77,163,255,.92);
+  color:#08111c;font-size:.74rem;font-weight:700;padding:1px 8px;border-radius:6px;
+  pointer-events:none;font-variant-numeric:tabular-nums}
+/* 拡大コントロール */
+.zoomctl{display:inline-flex;gap:4px;align-items:center;border:1px solid var(--line);
+  border-radius:11px;padding:3px 6px}
+.zoomctl b{font-variant-numeric:tabular-nums;font-size:.85rem;min-width:38px;text-align:center}
+.zoomctl .btn{min-height:38px;padding:4px 8px}
+/* スマホ用：パネルの隅のワンタップ拡大（1× → 2× → 3× → 1×） */
+.zoombtn{display:none;position:absolute;right:6px;top:6px;z-index:12;
+  background:rgba(20,26,36,.85);color:var(--fg);border:1px solid var(--line);
+  border-radius:9px;min-width:44px;min-height:40px;font-weight:700;font-size:.85rem;cursor:pointer}
+body.compact .zoombtn{display:block}
+body.compact .zoomctl{display:none}
 
 /* ---- 操作バー ---- */
 .transport{background:#131924;border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
@@ -260,6 +278,10 @@ body.compact .seekrow{margin-top:6px}
 body.compact .transport .row{flex-wrap:nowrap}
 body.compact #btnPlay{flex:1;min-width:0}
 body.compact #rateSeg{display:none}
+body.compact .zoomctl{padding:2px 4px;gap:2px}
+body.compact .zoomctl b{min-width:32px;font-size:.78rem}
+body.compact .zoomctl .btn{min-height:40px;padding:3px 7px;font-size:.85rem}
+body.compact .transport .row{flex-wrap:wrap}
 body.compact #btnRate{display:inline-block;flex:0 0 auto;min-width:62px;padding:8px 6px}
 body.compact #panes{flex:1 1 auto;min-height:118px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-top:8px}
 body.compact .tabpane{border-radius:10px;padding:12px}

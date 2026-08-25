@@ -225,10 +225,17 @@ A.attachStageGesture = function(p,opt){
   });
   p.vp.addEventListener('pointermove',function(e){
     if(!g.on)return;
+    if(A.pointerCount&&A.pointerCount()>1)return;   /* つまむ操作の最中は動かさない */
     var dx=e.clientX-g.x0, dy=e.clientY-g.y0;
     if(!g.axis){
       if(Math.abs(dx)<9&&Math.abs(dy)<9)return;
       g.axis=Math.abs(dx)>Math.abs(dy)?'x':'y';
+    }
+    if(A.zoomed()){
+      var r0=p.vp.getBoundingClientRect();
+      A.setZoom(A.view.z, A.view.cx-(e.clientX-g.x0)/r0.width, A.view.cy-(e.clientY-g.y0)/r0.height);
+      g.x0=e.clientX; g.y0=e.clientY;
+      return;
     }
     if(g.axis==='x'&&opt.onJog){
       var n=(dx<0?Math.ceil(dx/A.PX_PER_FRAME):Math.floor(dx/A.PX_PER_FRAME));
@@ -240,6 +247,83 @@ A.attachStageGesture = function(p,opt){
   });
   ['pointerup','pointercancel'].forEach(function(ev){
     p.vp.addEventListener(ev,function(){g.on=false;g.axis=null;});
+  });
+};
+
+/* ---------- 長押しで連打 ----------
+   スマホでは click だけだと押しっぱなしが効かないので、
+   押している間くり返す。 */
+A.attachRepeat=function(el,fn){
+  var t=null,iv=null;
+  function stop(){clearTimeout(t);clearInterval(iv);t=null;iv=null;}
+  el.addEventListener('pointerdown',function(e){
+    if(el.disabled)return;
+    e.preventDefault();
+    try{el.setPointerCapture(e.pointerId);}catch(err){}
+    fn(); A.vib();
+    t=setTimeout(function(){iv=setInterval(function(){
+      if(el.disabled){stop();return;}
+      fn(); A.vib(3);
+    },90);},420);
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){el.addEventListener(ev,stop);});
+  el.addEventListener('click',function(e){e.preventDefault();});
+};
+
+/* ---------- 拡大（ズーム） ----------
+   .vp ごと拡大するので、映像とオーバーレイ（線・点）が一緒に動き、ずれません。
+   クリック位置は getBoundingClientRect() の中での割合で取っているので、
+   拡大していても計算は変わりません。 */
+A.view={z:1,cx:0.5,cy:0.5};
+A.ZMAX=6;
+A.applyView=function(){
+  var v=A.view;
+  Object.keys(A.players).forEach(function(k){
+    var p=A.players[k];
+    p.vp.style.transformOrigin=(v.cx*100)+'% '+(v.cy*100)+'%';
+    p.vp.style.transform=(v.z===1)?'none':('scale('+v.z+')');
+  });
+  A.emit('view');
+};
+A.setZoom=function(z,cx,cy){
+  var v=A.view;
+  v.z=A.clamp(z,1,A.ZMAX);
+  if(v.z===1){v.cx=0.5;v.cy=0.5;}
+  else{
+    if(cx!=null)v.cx=A.clamp(cx,0,1);
+    if(cy!=null)v.cy=A.clamp(cy,0,1);
+  }
+  A.applyView();
+};
+A.zoomed=function(){return A.view.z>1.001;};
+/* 2本指でつまむ拡大と、拡大中の1本指での移動 */
+var zpts={};                       /* いま触れている指（全パネル共通） */
+A.pointerCount=function(){return Object.keys(zpts).length;};
+A.attachZoomGesture=function(p){
+  var pts=zpts,base=null;
+  function list(){var a=[];for(var k in pts)a.push(pts[k]);return a;}
+  p.vp.addEventListener('pointerdown',function(e){
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    var a=list();
+    if(a.length===2){
+      var r=p.vp.getBoundingClientRect();
+      base={d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y),z:A.view.z,
+            cx:A.clamp(((a[0].x+a[1].x)/2-r.left)/r.width,0,1),
+            cy:A.clamp(((a[0].y+a[1].y)/2-r.top)/r.height,0,1)};
+      if(base.d<1)base=null;
+    }
+  });
+  p.vp.addEventListener('pointermove',function(e){
+    if(!pts[e.pointerId])return;
+    pts[e.pointerId]={x:e.clientX,y:e.clientY};
+    var a=list();
+    if(a.length===2&&base){
+      var d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+      A.setZoom(base.z*(d/base.d),base.cx,base.cy);
+    }
+  });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){
+    p.vp.addEventListener(ev,function(e){delete pts[e.pointerId];if(list().length<2)base=null;});
   });
 };
 
