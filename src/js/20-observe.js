@@ -7,10 +7,9 @@
 'use strict';
 var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
 
-var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,
-  x1:null,y1:null,x2:null,y2:null,sMark:0,arm:0,
-  showGrid:false,showPred:false,camOn:false,vx:0,vxAuto:0,vxManual:null,
-  maskOn:false,maskW:0.06,maskOp:0.75,bandOp:0,lineOp:0.5,sbs:false,camX:0.5,measuring:false,
+var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,sMark:0,arm:0,
+  showGrid:false,showPred:false,camOn:false,vx:0,
+  maskOn:false,maskW:0.06,maskOp:0.75,bandOp:0,lineOp:0.5,sbs:false,camX:0.5,
   mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4};
 A.O=O;
 var P1=function(){return A.P('O1');}, P2=function(){return A.P('O2');};
@@ -37,7 +36,7 @@ function fillDt(){
   $('#obDtRead').textContent=O.dtF+' コマ ＝ '+f3(dtSec())+' 秒';
 }
 $('#obDtSel').addEventListener('change',function(e){
-  O.dtF=parseInt(e.target.value,10);O.dtTouched=true;fillDt();resetMeasure();
+  O.dtF=parseInt(e.target.value,10);O.dtTouched=true;fillDt();syncGridButtons();paint();
 });
 
 /* ---------- 区間 ---------- */
@@ -64,34 +63,15 @@ $('#obRangeDone').addEventListener('click',function(){
 });
 $('#obRangeReset').addEventListener('click',function(){O.fStart=O.fApex=O.fEnd=null;refreshRange();});
 
-/* ---------- 位置をはかる ---------- */
-function resetMeasure(){
-  O.x1=O.y1=O.x2=O.y2=null;O.arm=0;O.showGrid=false;O.showPred=false;O.vxAuto=0;O.vxManual=null;
-  $('#obMeas1v').textContent='—';$('#obMeas2v').textContent='—';
-  $('#obM1').classList.remove('done');$('#obM2').classList.remove('done');
-  $('#obMeas2').disabled=true;
-  $('#obMeasOut').classList.add('hidden');
-  $('#obCompare').classList.add('hidden');
-  ['#obGrid','#obPred'].forEach(function(x){$(x).disabled=true;$(x).classList.remove('ok');});
-  $('#obCamAuto').disabled=true;
-  syncHButtons(); armUI(); paint();
-}
-function armUI(){A.ov.arm(O.arm>0);
-  $('#obMeas1').classList.toggle('warn',O.arm===1);
-  $('#obMeas2').classList.toggle('warn',O.arm===2);
+/* ---------- 位置をタップして取る（帯の位置・最高点の軸） ---------- */
+function armUI(){
+  A.ov.arm(O.arm>0);
+  var hb=$('#hintbar');
+  if(hb){hb.textContent='タップするあいだ、カメラは止めています';A.show('#hintbar',O.arm>0);}
   $('#obApexPick').classList.toggle('warn',O.arm===3);
   $('#obCamPick').classList.toggle('warn',O.arm===4);
-}
-function setMeasuring(on){
-  O.measuring=on;
-  var hb=$('#hintbar');
-  if(hb){hb.textContent='測るあいだ、カメラは止めています';A.show('#hintbar',on);}
   paint();
 }
-A.observeSetMeasuring=setMeasuring;
-$('#obMeasReset').addEventListener('click',function(){setMeasuring(false);resetMeasure();});
-$('#obMeas1').addEventListener('click',function(){O.arm=1;setMeasuring(true);armUI();});
-$('#obMeas2').addEventListener('click',function(){O.arm=2;setMeasuring(true);armUI();});
 $('#obApexPick').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;O.arm=3;armUI();});
 
 /* 押した位置と離した位置がほぼ同じ（＝タップ）のときだけ点を取る。
@@ -112,25 +92,12 @@ function pick(pid){
     O._px=null;
     var vp=A.P(pid).vp, r=vp.getBoundingClientRect();
     var x=clamp((e.clientX-r.left)/r.width,0,1), y=clamp((e.clientY-r.top)/r.height,0,1);
-    if(O.arm===1){
-      O.x1=x;O.y1=y;O.sMark=A.S.s;O.arm=0;armUI();
-      $('#obMeas1v').textContent='① 横 '+(x*100).toFixed(1)+'%（'+Math.round(A.S.s*A.S.fps)+' コマ目）';
-      $('#obM1').classList.add('done');
-      A.S.s=clamp(O.sMark+dtSec(),0,mode.sMax());
-      var en=function(){$('#obMeas2').disabled=false;O.arm=2;armUI();};
-      var t=setTimeout(en,500);
-      P1().video.addEventListener('seeked',function h(){clearTimeout(t);P1().video.removeEventListener('seeked',h);en();});
-    }else if(O.arm===2){
-      O.x2=x;O.y2=y;O.arm=0;armUI();
-      $('#obMeas2v').textContent='② 横 '+(x*100).toFixed(1)+'%';
-      $('#obM2').classList.add('done');
-      setMeasuring(false);
-      finishMeasure();
-    }else if(O.arm===3){
+    if(O.arm===3){
       O.apexX=x;O.arm=0;armUI();
       $('#obApexV').textContent='横 '+(x*100).toFixed(1)+'%';
     }else if(O.arm===4){
-      O.arm=0;armUI(); setCamX(x);
+      /* 「このコマで、ボールはここ」を基準にする。以後のカメラの位置はここから計算する */
+      O.arm=0; O.sMark=A.S.s; armUI(); setCamX(x);
     }
     paint();
   };
@@ -140,43 +107,25 @@ function pick(pid){
   A.P(id).vp.addEventListener('pointerup',pick(id));
 });
 
-function finishMeasure(){
-  var d=O.x2-O.x1;
-  if(O.vxManual===null)O.vxManual=O.vx;      /* 生徒が自分で合わせた値を控えておく */
-  O.vxAuto=d/dtSec();
-  /* カメラをまだ触っていない場合だけ、測った値を入れておく
-     （自分で合わせた値があるときは上書きしない。それが答え合わせになるので） */
-  if(Math.abs(O.vxManual)<0.01)O.vx=O.vxAuto;
-  setCamX(O.x1);
-  $('#obMeasOut').classList.remove('hidden');
-  $('#obMeasOut').innerHTML='Δt ＝ <b>'+O.dtF+' コマ ＝ '+f3(dtSec())+' 秒</b> のあいだに、'+
-    'ボールは横に <b>画面幅の '+(Math.abs(d)*100).toFixed(1)+'%</b> 進みました。<br>'+
-    'このあいだの水平方向の速さは <b>'+Math.abs(O.vxAuto).toFixed(3)+' 画面幅/秒</b>。';
-  ['#obGrid','#obPred'].forEach(function(x){$(x).disabled=false;});
-  $('#obCamAuto').disabled=false;
-  var cv=$('#obCamV'), lim=Math.max(0.5,Math.abs(O.vxAuto)*2.5);
-  cv.min=String(-lim); cv.max=String(lim);
-  $('#obCamVnum').min=cv.min; $('#obCamVnum').max=cv.max;
-  setVx(O.vx);
-  showCompare();
+/* 縦線の間隔のもと。測った値があればそれを、無ければ自分で合わせたカメラの速さを使う */
+function gridBase(){
+  return {x0:O.camX, d:O.vx*dtSec(), v:O.vx};
 }
-/* 自分で合わせた速さと、測って出した速さを並べる（測定が答え合わせになる） */
-function showCompare(){
-  var man=O.vxManual;
-  if(man==null||Math.abs(man)<0.01){$('#obCompare').classList.add('hidden');return;}
-  var diff=Math.abs(man-O.vxAuto)/Math.abs(O.vxAuto)*100;
-  $('#obCompare').classList.remove('hidden');
-  $('#obCompare').innerHTML='自分で合わせた速さ <b>'+Math.abs(man).toFixed(3)+'</b> ／ '+
-    '測って出した速さ <b>'+Math.abs(O.vxAuto).toFixed(3)+'</b> 画面幅/秒　'+
-    '（ちがい <b>'+diff.toFixed(0)+'%</b>）';
+function syncGridButtons(){
+  var g=gridBase(), okg=Math.abs(g.d)>0.004;
+  $('#obGrid').disabled=!okg; $('#obPred').disabled=!okg;
+  $('#obGridSrc').textContent=okg
+    ? ('この速さなら Δt のあいだに 画面幅の '+(Math.abs(g.d)*100).toFixed(1)+'%（＝ Δt × '+Math.abs(g.v).toFixed(3)+'）')
+    : 'まず 2 でカメラの速さを決めてください。';
+  if(!okg){O.showGrid=false;O.showPred=false;}
 }
+A.observeSyncGrid=syncGridButtons;
 $('#obGrid').addEventListener('click',function(){
   O.showGrid=!O.showGrid; if(O.showGrid)O.camOn=false; syncHButtons(); paint();
 });
 $('#obPred').addEventListener('click',function(){O.showPred=!O.showPred;syncHButtons();paint();});
 $('#obCam').addEventListener('click',function(){
   O.camOn=!O.camOn; if(O.camOn)O.showGrid=false;
-  if(O.camOn&&O.x1==null)O.sMark=A.S.s;   /* 測定前は、いま見ているコマを基準にする */
   syncHButtons(); A.syncPanels(); setStage();
 });
 function setCamX(x,fromSlider){
@@ -217,7 +166,7 @@ function syncHButtons(){
   $('#obGrid').classList.toggle('ok',O.showGrid);
   $('#obGrid').textContent=O.showGrid?'縦線を消す':'縦線を出す';
   $('#obPred').classList.toggle('ok',O.showPred);
-  $('#obPred').textContent=O.showPred?'予想を消す':'予想を出す';
+  $('#obPred').textContent=O.showPred?'しるしを消す':'等速ならここ';
   $('#obCam').classList.toggle('ok',O.camOn);
   $('#obCam').textContent=O.camOn?'カメラを止める':'カメラを動かす';
   $('#obMask').classList.toggle('ok',O.maskOn);
@@ -235,7 +184,7 @@ function setVx(v,from){
   O.vx=clamp(Math.round(v*1000)/1000,-lim,lim);
   if(from!=='slider')cv.value=String(O.vx);
   if(from!=='num')$('#obCamVnum').value=O.vx.toFixed(3);
-  if(O.vxAuto)showCompare();
+  syncGridButtons();
   place();
 }
 A.observeSetVx=setVx;
@@ -244,10 +193,6 @@ $('#obCamVnum').addEventListener('input',function(){setVx(parseFloat(this.value)
 $('#obCamVnum').addEventListener('change',function(){setVx(parseFloat(this.value));});
 $$('[data-camv]').forEach(function(b){
   A.attachRepeat(b,function(){setVx(O.vx+parseFloat(b.getAttribute('data-camv')));});
-});
-$('#obCamAuto').addEventListener('click',function(){
-  if(O.vxManual===null)O.vxManual=O.vx;
-  setVx(O.vxAuto);
 });
 
 /* ---------- ミラー再生 ---------- */
@@ -286,14 +231,14 @@ function paint(){
   ['O1','O2'].forEach(function(id){A.ov.clear(A.P(id));});
   var tab=A.S.tab, p1=P1();
   if(tab==='h'){
-    if(O.showGrid&&O.x1!=null&&O.x2!=null){
-      var d=O.x2-O.x1;
+    if(O.showGrid){
+      var gb=gridBase(), d=gb.d;
       if(Math.abs(d)>0.004){
-        var a=Math.ceil((0-O.x1)/d), b=Math.floor((1-O.x1)/d);
+        var a=Math.ceil((0-gb.x0)/d), b=Math.floor((1-gb.x0)/d);
         if(a>b){var t=a;a=b;b=t;}
         a=Math.max(a,-60); b=Math.min(b,60);
         for(var k=a;k<=b;k++){
-          var x=O.x1+k*d; if(x<0||x>1)continue;
+          var x=gb.x0+k*d; if(x<0||x>1)continue;
           var el=A.ov.el(p1,'vline'+(k===0?' k0':''),k===0?'①':(k===1?'Δt':null));
           el.style.left=(x*100)+'%';
         }
@@ -301,18 +246,16 @@ function paint(){
     }
     if(O.camOn){
       /* 基準の縦線。測定前でも出し、ドラッグしてボールに合わせられるようにする */
-      var cl=A.ov.el(p1,'vline cam',O.x1==null?'ここに合わせる':null);
+      var cl=A.ov.el(p1,'vline cam');
       cl.addEventListener('pointerdown',function(ev){
         A.dragX(ev,p1.vp,function(x){setCamX(x);});
       });
       /* 帯そのもの（半透明の青）。濃さ 0 なら線だけになる */
       A.ov.el(p1,'band');
       /* 背景を隠す縦帯。動く背景が視界から外れると、ボールの動きが鉛直だけに見える */
-      if(O.maskOn&&!O.measuring){A.ov.el(p1,'mask ml');A.ov.el(p1,'mask mr');}
+      if(O.maskOn&&!paused()){A.ov.el(p1,'mask ml');A.ov.el(p1,'mask mr');}
     }
-    if(!O.camOn&&O.x1!=null){var d1=A.ov.el(p1,'dot d1');d1.style.left=(O.x1*100)+'%';d1.style.top=(O.y1*100)+'%';}
-    if(!O.camOn&&O.x2!=null){var d2=A.ov.el(p1,'dot d2');d2.style.left=(O.x2*100)+'%';d2.style.top=(O.y2*100)+'%';}
-    if(O.showPred&&O.x1!=null)A.ov.el(p1,'tri');
+    if(O.showPred)A.ov.el(p1,'tri');
   }
   if(tab==='v'){
     ['O1','O2'].forEach(function(id){
@@ -330,7 +273,10 @@ function paint(){
   }
   place();
 }
-function camActive(){return A.S.tab==='h'&&O.camOn&&!O.measuring;}
+/* 位置をタップしてもらうあいだは、カメラのパンとマスクを止める。
+   止めないとボールが帯の外に隠れて選べない／2点が同じ位置になる。 */
+function paused(){return O.arm>0;}
+function camActive(){return A.S.tab==='h'&&O.camOn&&!paused();}
 function place(){
   /* カメラのパンとミラーの反転 */
   var cam=camActive();
@@ -359,8 +305,8 @@ function place(){
   }
   if(A.S.tab==='h'){
     var tri=P1().ovl.querySelector('.tri');
-    if(tri&&O.x1!=null){
-      var xp=O.x1+O.vxAuto*(A.S.s-O.sMark);
+    if(tri){
+      var gp=gridBase(), xp=gp.x0+gp.v*(A.S.s-O.sMark);
       tri.style.left=clamp(xp,0,1)*100+'%';
       tri.style.opacity=(xp<-0.02||xp>1.02)?'0':'1';
     }
@@ -378,7 +324,7 @@ function place(){
 $('#obSave').addEventListener('click',function(){
   A.download('shaho-kansatsu.json',{app:'projectile-lab',part:'observe',version:2,
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
-    x1:O.x1,y1:O.y1,x2:O.x2,y2:O.y2,sMark:O.sMark,vx:O.vx,vxAuto:O.vxAuto,
+    sMark:O.sMark,vx:O.vx,
     apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,
     camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,bandOp:O.bandOp,lineOp:O.lineOp,name:P1().name});
   $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
@@ -387,7 +333,7 @@ $('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jso
 A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
-  ['fStart','fApex','fEnd','x1','y1','x2','y2','sMark','vx','vxAuto','apexX','hgY',
+  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY',
    'camX','maskW','maskOp','bandOp','lineOp'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
   if(d.mir)O.mir=d.mir;
@@ -400,12 +346,6 @@ A.observeLoadJson=function(d){
   $('#obLineOp').value=String(O.lineOp);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';
   $('#obCamV').value=String(O.vx);$('#obCamVnum').value=O.vx.toFixed(3);
   fillDt(); refreshRange();
-  if(O.x1!=null&&O.x2!=null){
-    $('#obM1').classList.add('done');$('#obM2').classList.add('done');
-    $('#obMeas1v').textContent='① 横 '+(O.x1*100).toFixed(1)+'%';
-    $('#obMeas2v').textContent='② 横 '+(O.x2*100).toFixed(1)+'%';
-    finishMeasure();
-  }
   syncHButtons(); setStage();
   $('#obSaveMsg').textContent='読み込みました。動画は別途読み込んでください。';
 };
@@ -438,9 +378,14 @@ var mode={
     return true;
   },
   onTab:function(id){
-    A.setPlaying(false); A.S.s=0; O.arm=0; O.measuring=false; A.show('#hintbar',false); armUI();
-    if(id==='h'&&!O.dtTouched&&ready3()){
-      var nd=suggestDt(); if(nd!==O.dtF){O.dtF=nd;fillDt();resetMeasure();}
+    A.setPlaying(false); A.S.s=0; O.arm=0; A.show('#hintbar',false); armUI();
+    if(id==='h'){
+      if(!O.dtTouched&&ready3()){var nd=suggestDt(); if(nd!==O.dtF){O.dtF=nd;fillDt();}}
+      /* 最初からカメラと背景隠しを効かせておく（探索から始める流れなので） */
+      if(!O.camOn){O.camOn=true;O.sMark=0;}
+      O.maskOn=true;
+      A.show('#obMaskRow',true);
+      syncHButtons(); syncGridButtons(); A.syncPanels();
     }
     setStage();
   },
@@ -483,5 +428,4 @@ A.registerMode('observe',mode);
     onJog:function(d){if(A.S.mode==='observe')A.step(d);}
   });
 });
-A.observeReset=resetMeasure;
 })(App);

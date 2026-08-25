@@ -20,8 +20,6 @@ A.setMode = function(id){
   var m=A.mode();
   $('#loadTitle').textContent=m.loadTitle||'';
   $('#loadLead').textContent=m.loadLead||'';
-  A.show('#tipsObserve',id==='observe');
-  A.show('#tipsCompare',id==='compare');
   A.show('#cmpModeRow',id==='compare');
   buildTabs();
   refreshZones();
