@@ -535,10 +535,11 @@ body.compact .subcard{padding:10px}
       <button class="btn sm" id="obSbs">もとの映像と並べる</button>
     </div>
     <div id="obMaskRow" class="hidden">
-      <div class="slider"><span>外の濃さ</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.75"><span class="v"><b id="obMaskOpv">75%</b></span></div>
-      <div class="slider"><span>線の濃さ</span><input type="range" id="obLineOp" min="0" max="1" step="0.05" value="0.5"><span class="v"><b id="obLineOpv">50%</b></span></div>
-      <div class="slider"><span>帯の色</span><input type="range" id="obBandOp" min="0" max="0.6" step="0.02" value="0"><span class="v"><b id="obBandOpv">0%</b></span></div>
-      <p class="mut small" style="margin:0">合ってきたら外を濃くして、もう一度。</p>
+      <div class="slider"><span>帯の外を隠す</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.75"><span class="v"><b id="obMaskOpv">75%</b></span></div>
+      <div class="slider"><span>中央の線</span><input type="range" id="obLineOp" min="0" max="1" step="0.05" value="0.5"><span class="v"><b id="obLineOpv">50%</b></span></div>
+      <div class="slider"><span>帯の塗り</span><input type="range" id="obBandOp" min="0" max="0.6" step="0.02" value="0"><span class="v"><b id="obBandOpv">0%</b></span></div>
+      <p class="mut small" style="margin:0">合ってきたら外を濃くして、もう一度。<br>
+        帯の<b>ふち</b>の線は「帯の外を隠す」で出ています。中央の線とは別ものです。</p>
     </div>
   </div>
 
