@@ -211,10 +211,12 @@
     <h3>2. ちょうど良いカメラ速度を探す</h3>
     <div class="slider"><span>速さ</span>
       <input type="range" id="obCamV" min="-1.5" max="1.5" step="0.005" value="0">
-      <input type="number" id="obCamVnum" class="numin" step="0.005" value="0.000"></div>
-    <div class="grid4">
+      <input type="number" id="obCamVnum" class="numin" step="0.001" value="0.000"></div>
+    <div class="grid6">
       <button class="btn sm" data-camv="-0.05">−0.05</button>
       <button class="btn sm" data-camv="-0.005">−0.005</button>
+      <button class="btn sm" data-camv="-0.001">−0.001</button>
+      <button class="btn sm" data-camv="0.001">＋0.001</button>
       <button class="btn sm" data-camv="0.005">＋0.005</button>
       <button class="btn sm" data-camv="0.05">＋0.05</button>
     </div>
@@ -270,6 +272,17 @@
       <span class="mut small" id="obApexV">—</span></div>
     <p class="mut small" style="margin:8px 0 0">左右反転して重ねるときの折り返しの軸になります。ピンクの線は左右にドラッグでも動かせます。</p>
   </div>
+  <div class="subcard">
+    <h3>折り返しを1コマ単位で合わせる</h3>
+    <div class="row">
+      <button class="btn sm" data-miradj="-1">−1コマ</button>
+      <button class="btn sm" data-miradj="1">＋1コマ</button>
+      <button class="btn sm" data-miradj="0">0にもどす</button>
+      <span class="big" id="obMirAdjV">±0 コマ</span>
+    </div>
+    <p class="mut small" style="margin:8px 0 0">コマ送りは上りと下りが同時に動くので、ふたつのずれは2コマずつ変わります。ここは<b>逆再生側だけ</b>を1コマ動かします。</p>
+  </div>
+
   <div class="subcard">
     <h3>高さをくらべる</h3>
     <div class="row"><button class="btn" id="obHG">高さの線を出す</button>

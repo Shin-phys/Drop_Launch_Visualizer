@@ -85,6 +85,8 @@ kbd{background:#2c3441;border:1px solid var(--line);border-bottom-width:2px;
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:760px){.grid2{grid-template-columns:1fr}}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.grid6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+@media(max-width:760px){.grid6{grid-template-columns:repeat(3,1fr)}}
 
 /* ---- ヘッダー ---- */
 #app{display:flex;flex-direction:column;min-height:100%}
@@ -517,10 +519,12 @@ body.compact .subcard{padding:10px}
     <h3>2. ちょうど良いカメラ速度を探す</h3>
     <div class="slider"><span>速さ</span>
       <input type="range" id="obCamV" min="-1.5" max="1.5" step="0.005" value="0">
-      <input type="number" id="obCamVnum" class="numin" step="0.005" value="0.000"></div>
-    <div class="grid4">
+      <input type="number" id="obCamVnum" class="numin" step="0.001" value="0.000"></div>
+    <div class="grid6">
       <button class="btn sm" data-camv="-0.05">−0.05</button>
       <button class="btn sm" data-camv="-0.005">−0.005</button>
+      <button class="btn sm" data-camv="-0.001">−0.001</button>
+      <button class="btn sm" data-camv="0.001">＋0.001</button>
       <button class="btn sm" data-camv="0.005">＋0.005</button>
       <button class="btn sm" data-camv="0.05">＋0.05</button>
     </div>
@@ -576,6 +580,17 @@ body.compact .subcard{padding:10px}
       <span class="mut small" id="obApexV">—</span></div>
     <p class="mut small" style="margin:8px 0 0">左右反転して重ねるときの折り返しの軸になります。ピンクの線は左右にドラッグでも動かせます。</p>
   </div>
+  <div class="subcard">
+    <h3>折り返しを1コマ単位で合わせる</h3>
+    <div class="row">
+      <button class="btn sm" data-miradj="-1">−1コマ</button>
+      <button class="btn sm" data-miradj="1">＋1コマ</button>
+      <button class="btn sm" data-miradj="0">0にもどす</button>
+      <span class="big" id="obMirAdjV">±0 コマ</span>
+    </div>
+    <p class="mut small" style="margin:8px 0 0">コマ送りは上りと下りが同時に動くので、ふたつのずれは2コマずつ変わります。ここは<b>逆再生側だけ</b>を1コマ動かします。</p>
+  </div>
+
   <div class="subcard">
     <h3>高さをくらべる</h3>
     <div class="row"><button class="btn" id="obHG">高さの線を出す</button>
@@ -816,7 +831,7 @@ A.P = function(id){return A.players[id];};
 A.mkPlayer = function(id){
   var p={id:id,
     vp:A.$('[data-vp="'+id+'"]'), video:A.$('[data-video="'+id+'"]'), ovl:A.$('[data-ovl="'+id+'"]'),
-    url:null,file:null,name:'',ready:false,previewing:false,mediaTime:null,
+    url:null,file:null,name:'',ready:false,previewing:false,mediaTime:null,want:null,sent:null,
     startFrame:0,scale:1,offsetY:0,panX:0.5,panX2:0};
   p.video.addEventListener('loadedmetadata',function(){
     p.ready=true; clearTimeout(p._t);
@@ -827,6 +842,13 @@ A.mkPlayer = function(id){
     }
     A.emit('loaded',p);
   });
+  /* シーク完了時に、取りこぼした指示があれば追いつく */
+  p.video.addEventListener('seeked',function(){
+    /* previewing 中は利用者が直接シークバーを動かしているので、時計は口を出さない */
+    if(p.previewing){p.want=null;p.sent=null;return;}
+    if(p.want==null||p.video.seeking)return;
+    if(A.TF(p.video.currentTime)!==A.TF(p.want))p.video.currentTime=p.want;
+  });
   p.video.addEventListener('error',function(){clearTimeout(p._t);A.codecHelp(p.name);});
   A.players[id]=p;
   return p;
@@ -835,7 +857,7 @@ A.loadInto = function(id,file){
   var p=A.P(id); if(!p||!file)return;
   if(p.url){try{URL.revokeObjectURL(p.url);}catch(e){}}
   p.url=URL.createObjectURL(file); p.file=file; p.name=file.name;
-  p.ready=false; p.mediaTime=null; p.startFrame=0;
+  p.ready=false; p.mediaTime=null; p.startFrame=0; p.want=null; p.sent=null;
   p.video.src=p.url; p.video.load();
   clearTimeout(p._t);
   p._t=setTimeout(function(){if(!p.ready)A.codecHelp(p.name);},9000);
@@ -901,8 +923,14 @@ A.seekTo = function(p,target){
   if(A.S.engine==='native'&&A.S.playing&&A.mode().allowNative){
     if(!v.seeking&&Math.abs(v.currentTime-target)>2/A.S.fps)v.currentTime=target;
   }else{
+    /* いま送りたい時刻は必ず覚えておく。
+       シーク中に来た指示を捨てると、その映像だけ止まったままになる（seeked で追いつかせる）。 */
+    p.want=target;
     if(v.seeking)return;
-    if(Math.abs(v.currentTime-target)>0.5/A.S.fps)v.currentTime=target;
+    /* 同じ時刻を送り続けない。コマ間隔が不揃いな動画だと、指定した時刻と
+       実際に出るコマの時刻がずれ、毎フレーム再シークして重くなるため。 */
+    if(p.sent===target)return;
+    if(A.TF(v.currentTime)!==A.TF(target)){p.sent=target;v.currentTime=target;}
   }
 };
 function frame(ts){
@@ -1012,19 +1040,38 @@ A.attachStageGesture = function(p,opt){
    スマホでは click だけだと押しっぱなしが効かないので、
    押している間くり返す。 */
 A.attachRepeat=function(el,fn){
-  var t=null,iv=null;
-  function stop(){clearTimeout(t);clearInterval(iv);t=null;iv=null;}
+  /* 押しっぱなしで連続。ただし pointerdown で即発火してはいけない。
+     スマホでは「画面をスクロールしようとして指をボタンの上に置いた」だけで
+     値が動いてしまうため（カメラ速度が勝手に 0.05 増える不具合の原因）。
+     ふつうのタップは指を離したとき、長押しは 420ms 動かさずに待ったときだけ効く。 */
+  var t=null,iv=null,armed=false,moved=false,fired=false,x0=0,y0=0,pid=null;
+  var SLOP=10;
+  function release(){ if(pid!=null){try{el.releasePointerCapture(pid);}catch(e){}pid=null;} }
+  function stop(){clearTimeout(t);clearInterval(iv);t=null;iv=null;armed=false;release();}
+  function fire(){fn();A.vib(fired?3:6);fired=true;}
   el.addEventListener('pointerdown',function(e){
     if(el.disabled)return;
-    e.preventDefault();
-    try{el.setPointerCapture(e.pointerId);}catch(err){}
-    fn(); A.vib();
-    t=setTimeout(function(){iv=setInterval(function(){
-      if(el.disabled){stop();return;}
-      fn(); A.vib(3);
-    },90);},420);
+    armed=true;moved=false;fired=false;x0=e.clientX;y0=e.clientY;pid=e.pointerId;
+    /* ここで preventDefault しない。すると指を置いた場所によってページが動かせなくなる。 */
+    t=setTimeout(function(){
+      if(!armed||moved||el.disabled)return;
+      try{el.setPointerCapture(pid);}catch(err){}
+      fire();
+      iv=setInterval(function(){ if(el.disabled){stop();return;} fire(); },90);
+    },420);
   });
-  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){el.addEventListener(ev,stop);});
+  el.addEventListener('pointermove',function(e){
+    if(!armed||iv)return;   /* 連打が始まったあとは、多少ぶれても続ける */
+    if(Math.abs(e.clientX-x0)>SLOP||Math.abs(e.clientY-y0)>SLOP){moved=true;stop();}
+  });
+  el.addEventListener('pointerup',function(){
+    var wasArmed=armed, hadRepeat=!!iv, wasMoved=moved, hadFired=fired;
+    stop();
+    if(wasArmed&&!wasMoved&&!hadRepeat&&!hadFired&&!el.disabled)fire();
+  });
+  ['pointercancel','pointerleave'].forEach(function(ev){
+    el.addEventListener(ev,function(){ if(!iv)stop(); });
+  });
   el.addEventListener('click',function(e){e.preventDefault();});
 };
 
@@ -1470,7 +1517,7 @@ var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
 var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,sMark:0,arm:0,
   showGrid:false,showPred:false,camOn:false,vx:0,
   maskOn:false,maskW:0.06,maskOp:0.75,bandOp:0,lineOp:0.5,sbs:false,camX:0.5,
-  mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4};
+  mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4,mirAdj:0};
 A.O=O;
 var P1=function(){return A.P('O1');}, P2=function(){return A.P('O2');};
 
@@ -1663,6 +1710,19 @@ $('#obMirSeg').addEventListener('click',function(e){
   setStage();
 });
 $('#obFlip').addEventListener('change',function(){O.flip=this.checked;paint();});
+/* 逆再生側だけを1コマ動かす。コマ送りは両方が同時に動くので、ふたつのずれは2コマ単位でしか変わらない。 */
+function syncMirAdj(){
+  var e=$('#obMirAdjV'); if(!e)return;
+  e.textContent=(O.mirAdj>0?'＋':O.mirAdj<0?'−':'±')+Math.abs(O.mirAdj)+' コマ';
+}
+A.observeSyncMirAdj=syncMirAdj;
+$$('[data-miradj]').forEach(function(b){
+  var d=parseInt(b.getAttribute('data-miradj'),10);
+  A.attachRepeat(b,function(){
+    O.mirAdj=d?clamp(O.mirAdj+d,-60,60):0;
+    syncMirAdj(); A.vib(4); paint();
+  });
+});
 $('#obOvop').addEventListener('input',function(){
   O.ovop=parseFloat(this.value);$('#obOvopV').textContent=Math.round(O.ovop*100)+'%';setStage();
 });
@@ -1785,7 +1845,7 @@ $('#obSave').addEventListener('click',function(){
   A.download('shaho-kansatsu.json',{app:'projectile-lab',part:'observe',version:2,
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
     sMark:O.sMark,vx:O.vx,
-    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,
+    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,mirAdj:O.mirAdj,
     camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,bandOp:O.bandOp,lineOp:O.lineOp,name:P1().name});
   $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
 });
@@ -1793,9 +1853,10 @@ $('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jso
 A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
-  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY',
+  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY','mirAdj',
    'camX','maskW','maskOp','bandOp','lineOp'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
+  syncMirAdj();
   if(d.mir)O.mir=d.mir;
   if(typeof d.flip==='boolean'){O.flip=d.flip;$('#obFlip').checked=d.flip;}
   if(typeof d.ovop==='number'){O.ovop=d.ovop;$('#obOvop').value=String(d.ovop);$('#obOvopV').textContent=Math.round(d.ovop*100)+'%';}
@@ -1854,7 +1915,11 @@ var mode={
     if(!P1().ready)return 0;
     if(A.S.tab==='range')return isFinite(P1().video.duration)?P1().video.duration:0;
     if(!ready3())return 0;
-    if(A.S.tab==='v')return Math.min(A.FT(O.fApex)-A.FT(O.fStart),A.FT(O.fEnd)-A.FT(O.fApex));
+    if(A.S.tab==='v'){
+      /* 逆再生側は fApex+mirAdj から手前へ戻るので、そのぶん動ける範囲が変わる */
+      var a=A.FT(O.fApex), b=A.FT(O.fApex+O.mirAdj);
+      return Math.max(0,Math.min(b-A.FT(O.fStart),A.FT(O.fEnd)-a));
+    }
     return A.FT(O.fEnd)-A.FT(O.fStart);
   },
   timeFor:function(pid){
@@ -1864,7 +1929,7 @@ var mode={
       return A.FT(O.fStart)+A.S.s;
     }
     if(pid==='O2'){
-      if(A.S.tab==='v')return A.FT(O.fApex)-A.S.s;
+      if(A.S.tab==='v')return A.FT(O.fApex+O.mirAdj)-A.S.s;
       if(A.S.tab==='h'&&O.camOn&&O.sbs)return A.FT(O.fStart)+A.S.s;
     }
     return null;

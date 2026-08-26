@@ -58,7 +58,7 @@ A.P = function(id){return A.players[id];};
 A.mkPlayer = function(id){
   var p={id:id,
     vp:A.$('[data-vp="'+id+'"]'), video:A.$('[data-video="'+id+'"]'), ovl:A.$('[data-ovl="'+id+'"]'),
-    url:null,file:null,name:'',ready:false,previewing:false,mediaTime:null,
+    url:null,file:null,name:'',ready:false,previewing:false,mediaTime:null,want:null,sent:null,
     startFrame:0,scale:1,offsetY:0,panX:0.5,panX2:0};
   p.video.addEventListener('loadedmetadata',function(){
     p.ready=true; clearTimeout(p._t);
@@ -69,6 +69,13 @@ A.mkPlayer = function(id){
     }
     A.emit('loaded',p);
   });
+  /* シーク完了時に、取りこぼした指示があれば追いつく */
+  p.video.addEventListener('seeked',function(){
+    /* previewing 中は利用者が直接シークバーを動かしているので、時計は口を出さない */
+    if(p.previewing){p.want=null;p.sent=null;return;}
+    if(p.want==null||p.video.seeking)return;
+    if(A.TF(p.video.currentTime)!==A.TF(p.want))p.video.currentTime=p.want;
+  });
   p.video.addEventListener('error',function(){clearTimeout(p._t);A.codecHelp(p.name);});
   A.players[id]=p;
   return p;
@@ -77,7 +84,7 @@ A.loadInto = function(id,file){
   var p=A.P(id); if(!p||!file)return;
   if(p.url){try{URL.revokeObjectURL(p.url);}catch(e){}}
   p.url=URL.createObjectURL(file); p.file=file; p.name=file.name;
-  p.ready=false; p.mediaTime=null; p.startFrame=0;
+  p.ready=false; p.mediaTime=null; p.startFrame=0; p.want=null; p.sent=null;
   p.video.src=p.url; p.video.load();
   clearTimeout(p._t);
   p._t=setTimeout(function(){if(!p.ready)A.codecHelp(p.name);},9000);
@@ -143,8 +150,14 @@ A.seekTo = function(p,target){
   if(A.S.engine==='native'&&A.S.playing&&A.mode().allowNative){
     if(!v.seeking&&Math.abs(v.currentTime-target)>2/A.S.fps)v.currentTime=target;
   }else{
+    /* いま送りたい時刻は必ず覚えておく。
+       シーク中に来た指示を捨てると、その映像だけ止まったままになる（seeked で追いつかせる）。 */
+    p.want=target;
     if(v.seeking)return;
-    if(Math.abs(v.currentTime-target)>0.5/A.S.fps)v.currentTime=target;
+    /* 同じ時刻を送り続けない。コマ間隔が不揃いな動画だと、指定した時刻と
+       実際に出るコマの時刻がずれ、毎フレーム再シークして重くなるため。 */
+    if(p.sent===target)return;
+    if(A.TF(v.currentTime)!==A.TF(target)){p.sent=target;v.currentTime=target;}
   }
 };
 function frame(ts){
@@ -254,19 +267,38 @@ A.attachStageGesture = function(p,opt){
    スマホでは click だけだと押しっぱなしが効かないので、
    押している間くり返す。 */
 A.attachRepeat=function(el,fn){
-  var t=null,iv=null;
-  function stop(){clearTimeout(t);clearInterval(iv);t=null;iv=null;}
+  /* 押しっぱなしで連続。ただし pointerdown で即発火してはいけない。
+     スマホでは「画面をスクロールしようとして指をボタンの上に置いた」だけで
+     値が動いてしまうため（カメラ速度が勝手に 0.05 増える不具合の原因）。
+     ふつうのタップは指を離したとき、長押しは 420ms 動かさずに待ったときだけ効く。 */
+  var t=null,iv=null,armed=false,moved=false,fired=false,x0=0,y0=0,pid=null;
+  var SLOP=10;
+  function release(){ if(pid!=null){try{el.releasePointerCapture(pid);}catch(e){}pid=null;} }
+  function stop(){clearTimeout(t);clearInterval(iv);t=null;iv=null;armed=false;release();}
+  function fire(){fn();A.vib(fired?3:6);fired=true;}
   el.addEventListener('pointerdown',function(e){
     if(el.disabled)return;
-    e.preventDefault();
-    try{el.setPointerCapture(e.pointerId);}catch(err){}
-    fn(); A.vib();
-    t=setTimeout(function(){iv=setInterval(function(){
-      if(el.disabled){stop();return;}
-      fn(); A.vib(3);
-    },90);},420);
+    armed=true;moved=false;fired=false;x0=e.clientX;y0=e.clientY;pid=e.pointerId;
+    /* ここで preventDefault しない。すると指を置いた場所によってページが動かせなくなる。 */
+    t=setTimeout(function(){
+      if(!armed||moved||el.disabled)return;
+      try{el.setPointerCapture(pid);}catch(err){}
+      fire();
+      iv=setInterval(function(){ if(el.disabled){stop();return;} fire(); },90);
+    },420);
   });
-  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){el.addEventListener(ev,stop);});
+  el.addEventListener('pointermove',function(e){
+    if(!armed||iv)return;   /* 連打が始まったあとは、多少ぶれても続ける */
+    if(Math.abs(e.clientX-x0)>SLOP||Math.abs(e.clientY-y0)>SLOP){moved=true;stop();}
+  });
+  el.addEventListener('pointerup',function(){
+    var wasArmed=armed, hadRepeat=!!iv, wasMoved=moved, hadFired=fired;
+    stop();
+    if(wasArmed&&!wasMoved&&!hadRepeat&&!hadFired&&!el.disabled)fire();
+  });
+  ['pointercancel','pointerleave'].forEach(function(ev){
+    el.addEventListener(ev,function(){ if(!iv)stop(); });
+  });
   el.addEventListener('click',function(e){e.preventDefault();});
 };
 

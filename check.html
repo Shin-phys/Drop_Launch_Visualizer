@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>コマ落ちチェッカー</title>
+<style>
+:root{--bg:#0f1115;--card:#171b23;--line:#2a3040;--fg:#eef2f8;--mut:#98a3b4;
+ --acc:#4da3ff;--ok:#3ddc84;--warn:#ffcc4d;--ng:#ff6b6b}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);font-size:16px;line-height:1.55;
+ font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+ -webkit-text-size-adjust:100%}
+.wrap{max-width:820px;margin:0 auto;padding:14px 12px calc(30px + env(safe-area-inset-bottom))}
+h1{font-size:1.25rem;margin:0 0 4px}
+h2{font-size:1rem;margin:16px 0 8px;color:var(--acc)}
+h2:first-child{margin-top:0}
+.mut{color:var(--mut)}.small{font-size:.88rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.btn{background:#242b38;color:var(--fg);border:1px solid var(--line);border-radius:11px;
+ padding:9px 14px;min-height:48px;font:inherit;cursor:pointer}
+.btn.primary{background:var(--acc);color:#08111c;border-color:transparent;font-weight:700}
+.btn.sm{min-height:40px;padding:6px 12px;font-size:.92rem}
+.btn[aria-pressed="true"]{background:#1d3a5c;border-color:var(--acc);color:#cfe6ff;font-weight:700}
+.btn:disabled{opacity:.4}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.hidden{display:none!important}
+.drop{border:2px dashed #3d4759;border-radius:14px;padding:18px;background:#12161e;text-align:center}
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.92rem}
+th,td{border:1px solid var(--line);padding:6px 9px;text-align:left}
+th{background:#1a212c;color:var(--mut);font-weight:600;width:52%}
+td{font-variant-numeric:tabular-nums}
+.verdict{border-radius:12px;padding:12px 14px;font-weight:700;margin-top:2px}
+.v-ok{background:#0f2a1c;border:1px solid #245c3d;color:#b6f0d0}
+.v-warn{background:#2b1d10;border:1px solid #6b4a1f;color:#ffd7a3}
+.v-ng{background:#2b1215;border:1px solid #6b2229;color:#ffc2c6}
+.verdict .sub{display:block;font-weight:400;font-size:.9rem;margin-top:6px;opacity:.92}
+.bars{display:flex;align-items:flex-end;gap:1px;height:86px;margin-top:8px;
+ background:#10151d;border:1px solid var(--line);border-radius:8px;padding:6px;overflow:hidden}
+.bars i{flex:1 1 2px;background:var(--acc);min-height:2px;border-radius:1px}
+.bars i.dup{background:var(--ng)}
+.bars i.odd{background:var(--warn)}
+.legend{display:flex;gap:14px;margin-top:6px;font-size:.8rem;color:var(--mut);flex-wrap:wrap}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+video{width:100%;max-height:34vh;background:#000;border-radius:10px;display:block}
+progress{width:100%;height:12px;margin-top:10px}
+b.hl{color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="card">
+  <h1>コマ落ちチェッカー</h1>
+  <p class="mut small" style="margin:4px 0 0">
+    その端末で撮った動画が「投射運動を観る」で使えるかを調べます。動画を1コマずつ実際に取り出して、
+    <b class="hl">コマの間隔がそろっているか</b>・<b class="hl">同じ画が重複していないか</b>を見ます。
+    動画はこの端末の中だけで処理され、どこにも送信されません。
+  </p>
+</div>
+
+<div class="card">
+  <div class="drop" id="drop">
+    <div style="font-weight:700;margin-bottom:8px">調べたい動画を選ぶ</div>
+    <div class="row" style="justify-content:center">
+      <button class="btn primary" id="btnLib">🎞 動画を選ぶ</button>
+      <button class="btn" id="btnCap">📹 その場で撮る</button>
+    </div>
+    <div class="mut small" style="margin-top:8px">動いているものが写った2〜5秒の動画でOK</div>
+    <div class="small" id="fname" style="color:var(--ok);margin-top:8px"></div>
+  </div>
+
+  <video id="v" playsinline webkit-playsinline muted preload="auto" class="hidden" style="margin-top:12px"></video>
+
+  <div id="setup" class="hidden" style="margin-top:12px">
+    <div class="small mut" style="margin-bottom:6px">撮影時に設定したコマ数／秒（わかれば）</div>
+    <div class="row" id="fpsRow">
+      <button class="btn sm" data-fps="0" aria-pressed="true">わからない</button>
+      <button class="btn sm" data-fps="30" aria-pressed="false">30</button>
+      <button class="btn sm" data-fps="60" aria-pressed="false">60</button>
+      <button class="btn sm" data-fps="120" aria-pressed="false">120</button>
+      <button class="btn sm" data-fps="240" aria-pressed="false">240</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary" id="btnRun">調べる</button>
+      <span class="mut small" id="runMsg"></span>
+    </div>
+    <progress id="prog" class="hidden" value="0" max="1"></progress>
+  </div>
+</div>
+
+<div class="card hidden" id="result">
+  <h2>結果</h2>
+  <div id="verdict"></div>
+  <table id="tbl"></table>
+  <h2>コマの間隔</h2>
+  <div class="bars" id="bars"></div>
+  <div class="legend">
+    <span><b style="background:#4da3ff"></b>そろっている</span>
+    <span><b style="background:#ffcc4d"></b>間隔がずれている</span>
+    <span><b style="background:#ff6b6b"></b>前と同じ画</span>
+  </div>
+  <p class="mut small" id="note" style="margin-top:10px"></p>
+</div>
+
+<div class="card">
+  <h2>読み方</h2>
+  <p class="small mut" style="margin-top:0">
+    <b class="hl">間隔がそろっている</b>とき、コマ番号と時刻が比例します。1コマ送るたびに同じ時間だけ進むので、
+    水平方向が等速かどうかを画面上の距離だけで判断できます。<br><br>
+    <b class="hl">間隔がばらつく</b>のは、可変フレームレート（VFR）で記録されているからです。1コマ送っても進む時間が毎回違うため、
+    等速で飛んでいる物体でも1コマあたりの移動距離がまちまちになります。暗い場所で撮ると起きやすくなります。<br><br>
+    <b class="hl">同じ画の重複</b>は、実際には撮れていないコマを水増ししている状態です。その区間は物体が止まって見えます。
+    高速撮影（120／240コマ/秒）を暗い場所で使うと起きやすくなります。<br><br>
+    うまくいかないときは、<b class="hl">明るい場所で</b>撮る、それでもダメなら<b class="hl">コマ数を1段下げて</b>撮り直すと安定します。
+  </p>
+</div>
+
+</div>
+
+<input type="file" id="libIn" accept="video/*" class="hidden">
+<input type="file" id="capIn" accept="video/*" capture="environment" class="hidden">
+
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+var v=$('#v'), url=null, running=false, setFps=0;
+var CW=320, CH=180, PIX=CW*CH;
+var cvs=document.createElement('canvas'), ctx=null, tainted=false;
+cvs.width=CW; cvs.height=CH;
+try{ ctx=cvs.getContext('2d',{willReadFrequently:true}); }catch(e){ ctx=null; }
+
+function show(sel,on){$(sel).classList.toggle('hidden',!on);}
+
+$('#btnLib').addEventListener('click',function(){$('#libIn').click();});
+$('#btnCap').addEventListener('click',function(){$('#capIn').click();});
+['libIn','capIn'].forEach(function(id){
+  $('#'+id).addEventListener('change',function(e){
+    var f=e.target.files&&e.target.files[0]; e.target.value=''; if(f)load(f);
+  });
+});
+['dragenter','dragover'].forEach(function(ev){
+  $('#drop').addEventListener(ev,function(e){e.preventDefault();});
+});
+$('#drop').addEventListener('drop',function(e){
+  e.preventDefault();
+  var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f)load(f);
+});
+$('#fpsRow').addEventListener('click',function(e){
+  var b=e.target.closest('button[data-fps]'); if(!b)return;
+  setFps=+b.dataset.fps;
+  $$('#fpsRow button').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});
+});
+
+function load(f){
+  if(url){try{URL.revokeObjectURL(url);}catch(e){}}
+  url=URL.createObjectURL(f);
+  tainted=false;
+  v.src=url; v.load();
+  $('#fname').textContent='✓ '+f.name+'（'+(f.size/1048576).toFixed(1)+' MB）';
+  show('#v',true); show('#setup',true); show('#result',false);
+  $('#runMsg').textContent='';
+}
+
+/* 1コマ取り出し: currentTime を指定して、実際に出たコマの時刻を読む */
+function grab(){
+  if(!ctx||tainted)return null;
+  try{
+    ctx.drawImage(v,0,0,CW,CH);
+    var d=ctx.getImageData(0,0,CW,CH).data, g=new Uint8Array(PIX);
+    for(var i=0,j=0;j<PIX;i+=4,j++)g[j]=(d[i]*77+d[i+1]*150+d[i+2]*29)>>8;
+    return g;
+  }catch(e){ tainted=true; return null; }
+}
+
+function seekScan(t0,hz,n,onProg){
+  return new Promise(function(res){
+    var out=[],k=0,lastM=-1,prevG=null;
+    function step(){
+      var t=t0+(k+0.5)/hz;
+      if(k>=n||t>=v.duration-0.001){res(out);return;}
+      var done=false,tmr=null;
+      var fin=function(m,got){
+        if(done)return; done=true; if(tmr)clearTimeout(tmr);
+        var go=function(){
+          if(got&&(lastM<0||Math.abs(m-lastM)>1e-6)){
+            var g=grab();
+            out.push({m:m,c:out.length?changed(g,prevG):null});
+            if(g)prevG=g;
+            lastM=m;
+          }
+          k++; if(onProg)onProg(k/n);
+          setTimeout(step,0);
+        };
+        /* 合成が終わってから画を読む（直前のコマを拾ってしまうのを防ぐ） */
+        if(got&&window.requestAnimationFrame)requestAnimationFrame(function(){requestAnimationFrame(go);});
+        else go();
+      };
+      if(v.requestVideoFrameCallback){
+        v.requestVideoFrameCallback(function(now,meta){ fin(meta.mediaTime,true); });
+      }
+      tmr=setTimeout(function(){ fin(0,false); },900);
+      v.currentTime=t;
+    }
+    step();
+  });
+}
+
+function median(a){
+  var b=a.slice().sort(function(x,y){return x-y;});
+  if(!b.length)return 0;
+  return b.length%2?b[(b.length-1)/2]:(b[b.length/2-1]+b[b.length/2])/2;
+}
+function quant(a,q){
+  var b=a.slice().sort(function(x,y){return x-y;});
+  if(!b.length)return 0;
+  return b[Math.min(b.length-1,Math.max(0,Math.round((b.length-1)*q)))];
+}
+/* 直前のコマとの「はっきり変わった画素の数」。重複コマなら 0 に近い */
+function changed(a,b){
+  if(!a||!b)return null;
+  var c=0;
+  for(var i=0;i<PIX;i++){var d=a[i]-b[i]; if(d>10||d<-10)c++;}
+  return c;
+}
+
+$('#btnRun').addEventListener('click',run);
+
+function run(){
+  if(running)return;
+  if(!v.duration||!isFinite(v.duration)){$('#runMsg').textContent='動画を読み込めませんでした。';return;}
+  if(!v.requestVideoFrameCallback){
+    $('#runMsg').textContent='このブラウザでは調べられません。Chrome か Safari でお試しください。';
+    return;
+  }
+  running=true; $('#btnRun').disabled=true; show('#prog',true);
+  $('#prog').value=0; $('#runMsg').textContent='1コマずつ取り出しています…';
+
+  var dur=v.duration;
+  /* 段階1: 短く細かく走査して、コマの間隔をおおまかにつかむ */
+  var probeHz=480, probeN=Math.min(56,Math.max(12,Math.floor(dur*probeHz)));
+  var t0=Math.min(dur*0.35,Math.max(0,dur-probeN/probeHz-0.02));
+  seekScan(t0,probeHz,probeN,function(p){$('#prog').value=p*0.2;}).then(function(a){
+    var u=a, est=0;
+    if(u.length>=3){
+      var iv=[]; for(var i=1;i<u.length;i++)iv.push(u[i].m-u[i-1].m);
+      var m=median(iv); if(m>0.0005)est=1/m;
+    }
+    if(!est)est=setFps||60;
+    est=Math.min(300,Math.max(15,est));
+    /* 段階2: 推定の2倍の細かさで、2か所を走査する */
+    var hz=est*2, per=Math.min(90,Math.max(30,Math.floor(dur*0.35*hz)));
+    var w0=Math.max(0,dur*0.08), w1=Math.min(Math.max(0,dur-per/hz-0.02),dur*0.55);
+    return seekScan(w0,hz,per,function(p){$('#prog').value=0.2+p*0.4;}).then(function(b){
+      if(w1<=w0+per/hz)return {a:b,b:[]};
+      return seekScan(w1,hz,per,function(p){$('#prog').value=0.6+p*0.4;}).then(function(c){
+        return {a:b,b:c};
+      });
+    });
+  }).then(function(r){
+    running=false; $('#btnRun').disabled=false; show('#prog',false); $('#runMsg').textContent='';
+    report(r.a,r.b);
+  }).catch(function(e){
+    running=false; $('#btnRun').disabled=false; show('#prog',false);
+    $('#runMsg').textContent='うまく調べられませんでした（'+e+'）。もう一度お試しください。';
+  });
+}
+
+function report(A,B){
+  if(A.length<6){
+    $('#runMsg').textContent='コマを十分に取り出せませんでした。もう少し長い動画でお試しください。';
+    return;
+  }
+  var segs=[A]; if(B.length>=6)segs.push(B);
+  var nAll=A.length+(segs.length>1?B.length:0);
+  var iv=[],pairs=[];
+  segs.forEach(function(s){
+    for(var i=1;i<s.length;i++){
+      iv.push(s[i].m-s[i-1].m);
+      pairs.push(s[i].c);
+    }
+  });
+  var med=median(iv), fps=med>0?1/med:0;
+  var mn=Math.min.apply(null,iv), mx=Math.max.apply(null,iv);
+  /* 判定の余裕: 動画の時刻はミリ秒単位に丸められることがあるので絶対値でも余裕を持たせる */
+  var tol=Math.max(0.0015,med*0.25);
+  var offFlag=iv.map(function(x){return Math.abs(x-med)>tol;});
+  var off=offFlag.filter(Boolean).length, offPct=off/iv.length*100;
+
+  var cs=pairs.filter(function(x){return x!=null;});
+  var haveImg=cs.length>=6;
+  /* 「ふつうに動いているときの変化量」を上位10%の位置で取る。重複が多数派でも基準がつぶれない */
+  var ref=haveImg?quant(cs,0.9):0;
+  var dupFlag=pairs.map(function(c){
+    return !!(haveImg&&c!=null&&ref>3&&c<=Math.max(1,ref*0.15));
+  });
+  var dup=dupFlag.filter(Boolean).length;
+  var dupPct=haveImg?dup/pairs.length*100:0;
+  var noMotion=haveImg&&ref<=3;
+
+  var near=[30,60,120,240].reduce(function(a,b){
+    return Math.abs(b-fps)<Math.abs(a-fps)?b:a;
+  },30);
+  var useFps=(fps>0&&Math.abs(near-fps)/fps<0.06)?near:Math.round(fps);
+  var down=useFps>=240?'120':useFps>=120?'60':'30';
+
+  var rows=[
+    ['実際のコマ数／秒', fps.toFixed(1)+' コマ/秒'],
+    ['コマの間隔（中央値）', (med*1000).toFixed(2)+' ms'],
+    ['コマの間隔（最短〜最長）', (mn*1000).toFixed(2)+' 〜 '+(mx*1000).toFixed(2)+' ms'],
+    ['間隔がずれているコマ', off+' / '+iv.length+'（'+offPct.toFixed(0)+'%）'],
+    ['前と同じ画のコマ', haveImg?(dup+' / '+pairs.length+'（'+dupPct.toFixed(0)+'%）'):'—（この環境では調べられません）'],
+    ['調べたコマ数', nAll+' コマ（'+segs.length+'か所）']
+  ];
+  if(setFps)rows.unshift(['撮影時の設定', setFps+' コマ/秒']);
+  $('#tbl').innerHTML=rows.map(function(r){return '<tr><th>'+r[0]+'</th><td>'+r[1]+'</td></tr>';}).join('');
+
+  var cls,msg,sub;
+  if(noMotion){
+    cls='v-warn';
+    msg='△ 画がほとんど動いていません。';
+    sub='動いているものが写った動画で、もう一度お試しください。コマの間隔だけなら上の表が参考になります。';
+  }else if(dupPct>8){
+    cls='v-ng';
+    msg='× この動画は観察に向きません。';
+    sub='同じ画が '+dupPct.toFixed(0)+'% 混じっています。実際には撮れていないコマを水増ししている状態で、その区間は物体が止まって見えます。'+
+        '明るい場所で撮り直すか、コマ数を '+down+' コマ/秒に下げて撮り直してください。';
+  }else if(offPct>15){
+    cls='v-warn';
+    msg='△ コマの間隔がそろっていません（可変フレームレート）。';
+    sub='1コマ送っても進む時間が毎回違うので、等速で飛んでいても1コマあたりの移動距離がまちまちになります。'+
+        '明るい場所で撮り直すか、コマ数を '+down+' コマ/秒に下げて撮り直してください。';
+  }else if(setFps&&fps>0&&Math.abs(setFps-fps)/fps>0.15){
+    cls='v-warn';
+    msg='△ 間隔はそろっていますが、設定より少ないコマ数で記録されています。';
+    sub='撮影時の設定は '+setFps+' コマ/秒ですが、実際に記録されているのは '+fps.toFixed(0)+' コマ/秒です。'+
+        'アプリの「コマ数／秒」を <b class="hl">'+useFps+'</b> にすれば、この動画は観察に使えます。';
+  }else{
+    cls='v-ok';
+    msg='◎ 問題ありません。この動画は使えます。';
+    sub='コマの間隔はそろっています。アプリの「コマ数／秒」は <b class="hl">'+useFps+'</b> に設定してください。';
+  }
+  $('#verdict').className='verdict '+cls;
+  $('#verdict').innerHTML=msg+'<span class="sub">'+sub+'</span>';
+
+  $('#bars').innerHTML=iv.map(function(x,i){
+    var h=Math.min(100,x/(med*2)*50);
+    var c=dupFlag[i]?' class="dup"':(offFlag[i]?' class="odd"':'');
+    return '<i'+c+' style="height:'+Math.max(3,h)+'%"></i>';
+  }).join('');
+  $('#note').textContent='棒1本が1コマ分の間隔です。高さがそろっていれば、コマ番号と時刻が比例します。';
+  show('#result',true);
+  $('#result').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+window.addEventListener('beforeunload',function(){if(url){try{URL.revokeObjectURL(url);}catch(e){}}});
+})();
+</script>
+</body>
+</html>

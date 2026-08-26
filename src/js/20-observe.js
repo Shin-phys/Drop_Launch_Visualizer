@@ -10,7 +10,7 @@ var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
 var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,sMark:0,arm:0,
   showGrid:false,showPred:false,camOn:false,vx:0,
   maskOn:false,maskW:0.06,maskOp:0.75,bandOp:0,lineOp:0.5,sbs:false,camX:0.5,
-  mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4};
+  mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4,mirAdj:0};
 A.O=O;
 var P1=function(){return A.P('O1');}, P2=function(){return A.P('O2');};
 
@@ -203,6 +203,19 @@ $('#obMirSeg').addEventListener('click',function(e){
   setStage();
 });
 $('#obFlip').addEventListener('change',function(){O.flip=this.checked;paint();});
+/* 逆再生側だけを1コマ動かす。コマ送りは両方が同時に動くので、ふたつのずれは2コマ単位でしか変わらない。 */
+function syncMirAdj(){
+  var e=$('#obMirAdjV'); if(!e)return;
+  e.textContent=(O.mirAdj>0?'＋':O.mirAdj<0?'−':'±')+Math.abs(O.mirAdj)+' コマ';
+}
+A.observeSyncMirAdj=syncMirAdj;
+$$('[data-miradj]').forEach(function(b){
+  var d=parseInt(b.getAttribute('data-miradj'),10);
+  A.attachRepeat(b,function(){
+    O.mirAdj=d?clamp(O.mirAdj+d,-60,60):0;
+    syncMirAdj(); A.vib(4); paint();
+  });
+});
 $('#obOvop').addEventListener('input',function(){
   O.ovop=parseFloat(this.value);$('#obOvopV').textContent=Math.round(O.ovop*100)+'%';setStage();
 });
@@ -325,7 +338,7 @@ $('#obSave').addEventListener('click',function(){
   A.download('shaho-kansatsu.json',{app:'projectile-lab',part:'observe',version:2,
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
     sMark:O.sMark,vx:O.vx,
-    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,
+    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,mirAdj:O.mirAdj,
     camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,bandOp:O.bandOp,lineOp:O.lineOp,name:P1().name});
   $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
 });
@@ -333,9 +346,10 @@ $('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jso
 A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
-  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY',
+  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY','mirAdj',
    'camX','maskW','maskOp','bandOp','lineOp'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
+  syncMirAdj();
   if(d.mir)O.mir=d.mir;
   if(typeof d.flip==='boolean'){O.flip=d.flip;$('#obFlip').checked=d.flip;}
   if(typeof d.ovop==='number'){O.ovop=d.ovop;$('#obOvop').value=String(d.ovop);$('#obOvopV').textContent=Math.round(d.ovop*100)+'%';}
@@ -394,7 +408,11 @@ var mode={
     if(!P1().ready)return 0;
     if(A.S.tab==='range')return isFinite(P1().video.duration)?P1().video.duration:0;
     if(!ready3())return 0;
-    if(A.S.tab==='v')return Math.min(A.FT(O.fApex)-A.FT(O.fStart),A.FT(O.fEnd)-A.FT(O.fApex));
+    if(A.S.tab==='v'){
+      /* 逆再生側は fApex+mirAdj から手前へ戻るので、そのぶん動ける範囲が変わる */
+      var a=A.FT(O.fApex), b=A.FT(O.fApex+O.mirAdj);
+      return Math.max(0,Math.min(b-A.FT(O.fStart),A.FT(O.fEnd)-a));
+    }
     return A.FT(O.fEnd)-A.FT(O.fStart);
   },
   timeFor:function(pid){
@@ -404,7 +422,7 @@ var mode={
       return A.FT(O.fStart)+A.S.s;
     }
     if(pid==='O2'){
-      if(A.S.tab==='v')return A.FT(O.fApex)-A.S.s;
+      if(A.S.tab==='v')return A.FT(O.fApex+O.mirAdj)-A.S.s;
       if(A.S.tab==='h'&&O.camOn&&O.sbs)return A.FT(O.fStart)+A.S.s;
     }
     return null;
