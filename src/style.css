@@ -75,6 +75,7 @@ kbd{background:#2c3441;border:1px solid var(--line);border-bottom-width:2px;
 .note.good{background:#0f2a1c;border-color:#245c3d;color:#b6f0d0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+#panes,#panes .tabpane{overflow-anchor:none}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .grid6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 @media(max-width:760px){.grid6{grid-template-columns:repeat(3,1fr)}}

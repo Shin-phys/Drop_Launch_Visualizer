@@ -40,10 +40,21 @@ function go(d){
   var m=A.mode();
   if(m.canOpenTab&&!m.canOpenTab(t[i].id))return;
   A.setTab(t[i].id);
-  var pane=document.querySelector('#panes .tabpane:not(.hidden)');
-  if(pane)pane.scrollTop=0;
-  $('#panes').scrollTop=0;
+  toTop();
 }
+/* ブラウザのスクロール位置合わせ（scroll anchoring）が、差し替えた直後に
+   前のステップの位置へ戻してしまうことがある。次の描画でもう一度上に戻す。 */
+function toTop(){
+  var run=function(){
+    var pane=document.querySelector('#panes .tabpane:not(.hidden)');
+    if(pane)pane.scrollTop=0;
+    var ps=$('#panes'); if(ps)ps.scrollTop=0;
+    if(document.scrollingElement)document.scrollingElement.scrollTop=0;
+  };
+  run();
+  requestAnimationFrame(function(){run();requestAnimationFrame(run);});
+}
+A.toTop=toTop;
 $('#stepPrev').addEventListener('click',function(){go(-1);});
 $('#stepNext').addEventListener('click',function(){go(1);});
 

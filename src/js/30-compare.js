@@ -55,7 +55,7 @@ $$('[data-cmstep]').forEach(function(b){
 $$('[data-cmscrub]').forEach(function(r){
   r.addEventListener('input',function(){
     var s=r.getAttribute('data-cmscrub'), p=PL(s); if(!p.ready)return;
-    setActive(s); previewSeek(p,parseFloat(r.value)||0);
+    setActive(s); previewSeek(p,A.FT(A.TF(parseFloat(r.value)||0)));
   });
 });
 $$('[data-cmset]').forEach(function(b){

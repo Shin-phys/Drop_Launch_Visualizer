@@ -84,6 +84,7 @@ kbd{background:#2c3441;border:1px solid var(--line);border-bottom-width:2px;
 .note.good{background:#0f2a1c;border-color:#245c3d;color:#b6f0d0}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+#panes,#panes .tabpane{overflow-anchor:none}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .grid6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
 @media(max-width:760px){.grid6{grid-template-columns:repeat(3,1fr)}}
@@ -326,7 +327,7 @@ body.compact .subcard{padding:10px}
       <button data-mode="observe" class="on">① 斜方投射を観る</button>
       <button data-mode="compare">② 自由落下とくらべる</button>
     </div>
-    <label class="small">fps
+    <label class="small">動画のコマ数／秒
       <select id="fpsSel">
         <option value="30">30</option><option value="60" selected>60</option>
         <option value="120">120</option><option value="240">240</option>
@@ -804,7 +805,7 @@ A.download = function(name,obj){
 };
 
 /* ---------- 状態 ---------- */
-A.S = {fps:60, mode:'observe', rate:1, engine:'seek', playing:false, s:0};
+A.S = {fps:60, fpsAuto:false, mode:'observe', rate:1, engine:'seek', playing:false, s:0};
 
 /* ---------- コマと時刻 ----------
    映像側の時刻は「コマ境界（f/fps）」で返る場合と、こちらが指定した
@@ -883,6 +884,72 @@ A.applyTransform = function(p,extraX,flipAboutX){
   }
   p.video.style.transform=t;
   p.video.style.objectPosition=(p.panX*100)+'% 50%';
+};
+
+/* ---------- コマ数の実測 ----------
+   撮影時に「240fps」を選んでも、書き出されたファイルが 240 コマ/秒とは限らない。
+   スローモーションは 240 コマで撮って 60 コマ/秒のファイルに引き伸ばして保存されることが多く、
+   その場合ファイル上のコマ数は 60。fps を 240 にすると「4回押してやっと1コマ」になる。
+   なので選ばせるのではなく、実際のコマの時刻を読んで測る。
+   再生して測ってはいけない（画面の書き換えは 60Hz なので、動画ではなく画面を測ってしまう）。 */
+A.measureFps = function(p, done){
+  if(!p||!p.url||!('requestVideoFrameCallback' in HTMLVideoElement.prototype)){done(null);return;}
+  /* 本体のプレーヤーは触らない。同じ動画をもう1つ、見えない場所で開いて測る。
+     本体を使うと、測っているあいだ操作が効かず、画面も飛び回ってしまう。 */
+  var v=document.createElement('video');
+  v.muted=true; v.playsInline=true; v.setAttribute('playsinline',''); v.preload='auto';
+  v.style.cssText='position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:.01;'+
+                  'pointer-events:none;z-index:-1';
+  document.body.appendChild(v);
+  var doneCalled=false, giveUp=null;
+  function bail(r){
+    if(doneCalled)return; doneCalled=true;
+    clearTimeout(giveUp);
+    try{v.removeAttribute('src');v.load();}catch(e){}
+    try{v.parentNode.removeChild(v);}catch(e){}
+    done(r);
+  }
+  giveUp=setTimeout(function(){bail(null);},20000);
+  v.addEventListener('error',function(){bail(null);});
+  v.addEventListener('loadeddata',function(){
+    if(!isFinite(v.duration)||v.duration<=0){bail(null);return;}
+    var HZ=480, n=Math.min(56,Math.max(12,Math.floor(v.duration*HZ)));
+    var t0=Math.min(v.duration*0.35,Math.max(0,v.duration-n/HZ-0.02));
+    var out=[],k=0,lastM=-1;
+    function finish(){
+      if(out.length<4){bail(null);return;}
+      var iv=[],i;
+      for(i=1;i<out.length;i++)iv.push(out[i]-out[i-1]);
+      var b=iv.slice().sort(function(x,y){return x-y;});
+      var med=b.length%2?b[(b.length-1)/2]:(b[b.length/2-1]+b[b.length/2])/2;
+      if(!(med>0.0005)){bail(null);return;}
+      var tol=Math.max(0.0015,med*0.25);
+      var off=iv.filter(function(x){return Math.abs(x-med)>tol;}).length;
+      bail({fps:1/med, frames:out.length, uneven:off/iv.length>0.15});
+    }
+    function step(){
+      if(doneCalled)return;
+      var t=t0+(k+0.5)/HZ;
+      if(k>=n||t>=v.duration-0.001){finish();return;}
+      var did=false,tmr=null;
+      var fin=function(m,got){
+        if(did)return; did=true; if(tmr)clearTimeout(tmr);
+        if(got&&(lastM<0||Math.abs(m-lastM)>1e-6)){out.push(m);lastM=m;}
+        k++; setTimeout(step,0);
+      };
+      v.requestVideoFrameCallback(function(now,meta){fin(meta.mediaTime,true);});
+      tmr=setTimeout(function(){fin(0,false);},900);
+      try{v.currentTime=t;}catch(e){fin(0,false);}
+    }
+    step();
+  });
+  v.src=p.url; v.load();
+};
+/* 実測値を、使いやすい値に丸める（29.97 → 30 など）。外れていればそのまま整数で使う。 */
+A.tidyFps = function(f){
+  var near=[24,25,30,50,60,100,120,240].reduce(function(a,b){
+    return Math.abs(b-f)<Math.abs(a-f)?b:a;},30);
+  return (Math.abs(near-f)/f<0.06)?near:Math.max(1,Math.round(f));
 };
 
 /* ---------- モード登録 ---------- */
@@ -1306,16 +1373,60 @@ A.on('loaded',function(p){
   syncPanels();
 });
 
-/* ---------- fps ---------- */
-$('#fpsSel').addEventListener('change',function(e){
-  var nf=parseInt(e.target.value,10), keep=[];
+/* ---------- コマ数／秒 ----------
+   ここで聞いているのは「ファイルに入っているコマ数」であって、カメラの撮影設定ではない。
+   240fps のスロー撮影は 60 コマ/秒のファイルに引き伸ばして保存されることが多く、
+   その場合ここを 240 にすると「4回押してやっと1コマ」になる。
+   だから選ばせずに、読み込んだ動画から実測する。 */
+function applyFps(nf){
+  var keep=[];
   Object.keys(A.players).forEach(function(k){keep.push({obj:A.players[k],key:'startFrame'});});
   if(A.mode().fpsKeep)keep=keep.concat(A.mode().fpsKeep());
   A.setFps(nf,keep);
+}
+function setFpsOption(nf){
+  var sel=$('#fpsSel');
+  if(!A.$$('option',sel).some(function(o){return +o.value===nf;})){
+    var o=document.createElement('option');
+    o.value=String(nf); o.textContent=String(nf);
+    sel.appendChild(o);
+  }
+  sel.value=String(nf);
+}
+$('#fpsSel').addEventListener('change',function(e){
+  A.S.fpsAuto=false;
+  applyFps(parseInt(e.target.value,10));
   fpsHint();
 });
-function fpsHint(){$('#fpsHint').textContent='1コマ ＝ '+A.f3(1/A.S.fps)+' 秒';}
+function fpsHint(msg){
+  $('#fpsHint').textContent = msg!=null ? msg
+    : ('1コマ ＝ '+A.f3(1/A.S.fps)+' 秒'+(A.S.fpsAuto?'（動画から実測）':''));
+}
 A.fpsHint=fpsHint;
+
+/* 動画を読み込んだら、そのファイルのコマ数を測って合わせる */
+A.on('loaded',function(p){
+  fpsHint('コマ数を調べています…');
+  A.measureFps(p,function(r){
+    if(!r){ p.fpsMeasured=null; fpsHint(); return; }
+    var nf=A.tidyFps(r.fps);
+    p.fpsMeasured=nf;
+    A.S.fpsAuto=true;
+    setFpsOption(nf); applyFps(nf); fpsHint();
+    var others=Object.keys(A.players).map(function(k){return A.players[k];})
+      .filter(function(q){return q!==p&&q.ready&&q.fpsMeasured;});
+    var clash=others.filter(function(q){return q.fpsMeasured!==nf;});
+    if(clash.length){
+      A.toast('2つの動画でコマ数が違います（'+clash[0].fpsMeasured+' と '+nf+' コマ/秒）。'+
+              '同じ設定で撮り直すか、上の「動画のコマ数／秒」で選び直してください。',7000);
+    }else if(r.uneven){
+      A.toast('コマの間隔が不揃いです（可変フレームレート）。1コマ送っても進む時間が毎回違うので、'+
+              '明るい場所で撮り直すか、コマ数を1段下げて撮り直してください。',7000);
+    }else{
+      A.toast('この動画は <b>'+nf+' コマ/秒</b>でした。設定を合わせたので、1回押すと1コマ進みます。',4200);
+    }
+  });
+});
 
 /* ---------- 操作バー ---------- */
 $('#btnPlay').addEventListener('click',A.togglePlay);
@@ -1462,10 +1573,21 @@ function go(d){
   var m=A.mode();
   if(m.canOpenTab&&!m.canOpenTab(t[i].id))return;
   A.setTab(t[i].id);
-  var pane=document.querySelector('#panes .tabpane:not(.hidden)');
-  if(pane)pane.scrollTop=0;
-  $('#panes').scrollTop=0;
+  toTop();
 }
+/* ブラウザのスクロール位置合わせ（scroll anchoring）が、差し替えた直後に
+   前のステップの位置へ戻してしまうことがある。次の描画でもう一度上に戻す。 */
+function toTop(){
+  var run=function(){
+    var pane=document.querySelector('#panes .tabpane:not(.hidden)');
+    if(pane)pane.scrollTop=0;
+    var ps=$('#panes'); if(ps)ps.scrollTop=0;
+    if(document.scrollingElement)document.scrollingElement.scrollTop=0;
+  };
+  run();
+  requestAnimationFrame(function(){run();requestAnimationFrame(run);});
+}
+A.toTop=toTop;
 $('#stepPrev').addEventListener('click',function(){go(-1);});
 $('#stepNext').addEventListener('click',function(){go(1);});
 
@@ -1924,7 +2046,9 @@ var mode={
   },
   timeFor:function(pid){
     if(pid==='O1'){
-      if(A.S.tab==='range')return A.S.s;
+      /* コマの中央を狙う。境界ちょうど（f/fps）を指定すると、動画側の時刻がミリ秒に
+         丸められている分だけ手前のコマに落ちて、1回押しても画が変わらないことがある。 */
+      if(A.S.tab==='range')return A.FT(A.TF(A.S.s));
       if(A.S.tab==='v')return A.FT(O.fApex)+A.S.s;
       return A.FT(O.fStart)+A.S.s;
     }
@@ -2013,7 +2137,7 @@ $$('[data-cmstep]').forEach(function(b){
 $$('[data-cmscrub]').forEach(function(r){
   r.addEventListener('input',function(){
     var s=r.getAttribute('data-cmscrub'), p=PL(s); if(!p.ready)return;
-    setActive(s); previewSeek(p,parseFloat(r.value)||0);
+    setActive(s); previewSeek(p,A.FT(A.TF(parseFloat(r.value)||0)));
   });
 });
 $$('[data-cmset]').forEach(function(b){

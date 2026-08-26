@@ -128,16 +128,60 @@ A.on('loaded',function(p){
   syncPanels();
 });
 
-/* ---------- fps ---------- */
-$('#fpsSel').addEventListener('change',function(e){
-  var nf=parseInt(e.target.value,10), keep=[];
+/* ---------- コマ数／秒 ----------
+   ここで聞いているのは「ファイルに入っているコマ数」であって、カメラの撮影設定ではない。
+   240fps のスロー撮影は 60 コマ/秒のファイルに引き伸ばして保存されることが多く、
+   その場合ここを 240 にすると「4回押してやっと1コマ」になる。
+   だから選ばせずに、読み込んだ動画から実測する。 */
+function applyFps(nf){
+  var keep=[];
   Object.keys(A.players).forEach(function(k){keep.push({obj:A.players[k],key:'startFrame'});});
   if(A.mode().fpsKeep)keep=keep.concat(A.mode().fpsKeep());
   A.setFps(nf,keep);
+}
+function setFpsOption(nf){
+  var sel=$('#fpsSel');
+  if(!A.$$('option',sel).some(function(o){return +o.value===nf;})){
+    var o=document.createElement('option');
+    o.value=String(nf); o.textContent=String(nf);
+    sel.appendChild(o);
+  }
+  sel.value=String(nf);
+}
+$('#fpsSel').addEventListener('change',function(e){
+  A.S.fpsAuto=false;
+  applyFps(parseInt(e.target.value,10));
   fpsHint();
 });
-function fpsHint(){$('#fpsHint').textContent='1コマ ＝ '+A.f3(1/A.S.fps)+' 秒';}
+function fpsHint(msg){
+  $('#fpsHint').textContent = msg!=null ? msg
+    : ('1コマ ＝ '+A.f3(1/A.S.fps)+' 秒'+(A.S.fpsAuto?'（動画から実測）':''));
+}
 A.fpsHint=fpsHint;
+
+/* 動画を読み込んだら、そのファイルのコマ数を測って合わせる */
+A.on('loaded',function(p){
+  fpsHint('コマ数を調べています…');
+  A.measureFps(p,function(r){
+    if(!r){ p.fpsMeasured=null; fpsHint(); return; }
+    var nf=A.tidyFps(r.fps);
+    p.fpsMeasured=nf;
+    A.S.fpsAuto=true;
+    setFpsOption(nf); applyFps(nf); fpsHint();
+    var others=Object.keys(A.players).map(function(k){return A.players[k];})
+      .filter(function(q){return q!==p&&q.ready&&q.fpsMeasured;});
+    var clash=others.filter(function(q){return q.fpsMeasured!==nf;});
+    if(clash.length){
+      A.toast('2つの動画でコマ数が違います（'+clash[0].fpsMeasured+' と '+nf+' コマ/秒）。'+
+              '同じ設定で撮り直すか、上の「動画のコマ数／秒」で選び直してください。',7000);
+    }else if(r.uneven){
+      A.toast('コマの間隔が不揃いです（可変フレームレート）。1コマ送っても進む時間が毎回違うので、'+
+              '明るい場所で撮り直すか、コマ数を1段下げて撮り直してください。',7000);
+    }else{
+      A.toast('この動画は <b>'+nf+' コマ/秒</b>でした。設定を合わせたので、1回押すと1コマ進みます。',4200);
+    }
+  });
+});
 
 /* ---------- 操作バー ---------- */
 $('#btnPlay').addEventListener('click',A.togglePlay);

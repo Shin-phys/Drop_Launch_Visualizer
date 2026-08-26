@@ -417,7 +417,9 @@ var mode={
   },
   timeFor:function(pid){
     if(pid==='O1'){
-      if(A.S.tab==='range')return A.S.s;
+      /* コマの中央を狙う。境界ちょうど（f/fps）を指定すると、動画側の時刻がミリ秒に
+         丸められている分だけ手前のコマに落ちて、1回押しても画が変わらないことがある。 */
+      if(A.S.tab==='range')return A.FT(A.TF(A.S.s));
       if(A.S.tab==='v')return A.FT(O.fApex)+A.S.s;
       return A.FT(O.fStart)+A.S.s;
     }

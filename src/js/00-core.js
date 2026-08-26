@@ -31,7 +31,7 @@ A.download = function(name,obj){
 };
 
 /* ---------- 状態 ---------- */
-A.S = {fps:60, mode:'observe', rate:1, engine:'seek', playing:false, s:0};
+A.S = {fps:60, fpsAuto:false, mode:'observe', rate:1, engine:'seek', playing:false, s:0};
 
 /* ---------- コマと時刻 ----------
    映像側の時刻は「コマ境界（f/fps）」で返る場合と、こちらが指定した
@@ -110,6 +110,72 @@ A.applyTransform = function(p,extraX,flipAboutX){
   }
   p.video.style.transform=t;
   p.video.style.objectPosition=(p.panX*100)+'% 50%';
+};
+
+/* ---------- コマ数の実測 ----------
+   撮影時に「240fps」を選んでも、書き出されたファイルが 240 コマ/秒とは限らない。
+   スローモーションは 240 コマで撮って 60 コマ/秒のファイルに引き伸ばして保存されることが多く、
+   その場合ファイル上のコマ数は 60。fps を 240 にすると「4回押してやっと1コマ」になる。
+   なので選ばせるのではなく、実際のコマの時刻を読んで測る。
+   再生して測ってはいけない（画面の書き換えは 60Hz なので、動画ではなく画面を測ってしまう）。 */
+A.measureFps = function(p, done){
+  if(!p||!p.url||!('requestVideoFrameCallback' in HTMLVideoElement.prototype)){done(null);return;}
+  /* 本体のプレーヤーは触らない。同じ動画をもう1つ、見えない場所で開いて測る。
+     本体を使うと、測っているあいだ操作が効かず、画面も飛び回ってしまう。 */
+  var v=document.createElement('video');
+  v.muted=true; v.playsInline=true; v.setAttribute('playsinline',''); v.preload='auto';
+  v.style.cssText='position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:.01;'+
+                  'pointer-events:none;z-index:-1';
+  document.body.appendChild(v);
+  var doneCalled=false, giveUp=null;
+  function bail(r){
+    if(doneCalled)return; doneCalled=true;
+    clearTimeout(giveUp);
+    try{v.removeAttribute('src');v.load();}catch(e){}
+    try{v.parentNode.removeChild(v);}catch(e){}
+    done(r);
+  }
+  giveUp=setTimeout(function(){bail(null);},20000);
+  v.addEventListener('error',function(){bail(null);});
+  v.addEventListener('loadeddata',function(){
+    if(!isFinite(v.duration)||v.duration<=0){bail(null);return;}
+    var HZ=480, n=Math.min(56,Math.max(12,Math.floor(v.duration*HZ)));
+    var t0=Math.min(v.duration*0.35,Math.max(0,v.duration-n/HZ-0.02));
+    var out=[],k=0,lastM=-1;
+    function finish(){
+      if(out.length<4){bail(null);return;}
+      var iv=[],i;
+      for(i=1;i<out.length;i++)iv.push(out[i]-out[i-1]);
+      var b=iv.slice().sort(function(x,y){return x-y;});
+      var med=b.length%2?b[(b.length-1)/2]:(b[b.length/2-1]+b[b.length/2])/2;
+      if(!(med>0.0005)){bail(null);return;}
+      var tol=Math.max(0.0015,med*0.25);
+      var off=iv.filter(function(x){return Math.abs(x-med)>tol;}).length;
+      bail({fps:1/med, frames:out.length, uneven:off/iv.length>0.15});
+    }
+    function step(){
+      if(doneCalled)return;
+      var t=t0+(k+0.5)/HZ;
+      if(k>=n||t>=v.duration-0.001){finish();return;}
+      var did=false,tmr=null;
+      var fin=function(m,got){
+        if(did)return; did=true; if(tmr)clearTimeout(tmr);
+        if(got&&(lastM<0||Math.abs(m-lastM)>1e-6)){out.push(m);lastM=m;}
+        k++; setTimeout(step,0);
+      };
+      v.requestVideoFrameCallback(function(now,meta){fin(meta.mediaTime,true);});
+      tmr=setTimeout(function(){fin(0,false);},900);
+      try{v.currentTime=t;}catch(e){fin(0,false);}
+    }
+    step();
+  });
+  v.src=p.url; v.load();
+};
+/* 実測値を、使いやすい値に丸める（29.97 → 30 など）。外れていればそのまま整数で使う。 */
+A.tidyFps = function(f){
+  var near=[24,25,30,50,60,100,120,240].reduce(function(a,b){
+    return Math.abs(b-f)<Math.abs(a-f)?b:a;},30);
+  return (Math.abs(near-f)/f<0.06)?near:Math.max(1,Math.round(f));
 };
 
 /* ---------- モード登録 ---------- */
