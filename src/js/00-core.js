@@ -58,7 +58,7 @@ A.P = function(id){return A.players[id];};
 A.mkPlayer = function(id){
   var p={id:id,
     vp:A.$('[data-vp="'+id+'"]'), video:A.$('[data-video="'+id+'"]'), ovl:A.$('[data-ovl="'+id+'"]'),
-    url:null,file:null,name:'',ready:false,previewing:false,mediaTime:null,want:null,sent:null,
+    url:null,file:null,name:'',ready:false,previewing:false,mediaTime:null,want:null,sent:null,sc:null,
     startFrame:0,scale:1,offsetY:0,panX:0.5,panX2:0};
   p.video.addEventListener('loadedmetadata',function(){
     p.ready=true; clearTimeout(p._t);
@@ -110,6 +110,30 @@ A.applyTransform = function(p,extraX,flipAboutX){
   }
   p.video.style.transform=t;
   p.video.style.objectPosition=(p.panX*100)+'% 50%';
+  /* ストロボの合成画は映像に貼りついていないといけない。同じ変形をそのまま当てる。 */
+  if(p.sc){
+    p.sc.style.transformOrigin=p.video.style.transformOrigin;
+    p.sc.style.transform=t;
+    p.sc.style.objectPosition=p.video.style.objectPosition;
+  }
+};
+
+/* ---------- ストロボ用のキャンバス ----------
+   映像と同じ縦横比・同じ object-fit で重ねるので、画面上の位置は映像とぴったり一致する。
+   中身は「素のコマ」で作る。画面の見え方（拡大・パン）には一切さわらない。 */
+A.strobeCv = function(p){
+  if(!p.sc){
+    var c=document.createElement('canvas');
+    c.className='strobe hidden';
+    p.vp.insertBefore(c,p.ovl);
+    p.sc=c;
+    A.applyTransform(p,0);
+  }
+  var v=p.video;
+  if(v.videoWidth&&v.videoHeight&&(p.sc.width!==v.videoWidth||p.sc.height!==v.videoHeight)){
+    p.sc.width=v.videoWidth; p.sc.height=v.videoHeight;
+  }
+  return p.sc;
 };
 
 /* ---------- コマ数の実測 ----------

@@ -254,6 +254,50 @@
     </div>
     <p class="mut small" style="margin:8px 0 0">Δt ごとに、線を1本ずつ通りますか。</p>
   </div>
+
+  <div class="subcard">
+    <h3>4. ストロボにする</h3>
+    <div class="row">
+      <button class="btn warn" id="obStrobe">ストロボにする</button>
+      <div class="seg sm hidden" id="obSbSeg">
+        <button data-sb="light" class="on">明るい球</button><button data-sb="dark">暗い球</button>
+      </div>
+    </div>
+    <div id="obSbRow" class="hidden">
+      <p class="mut small" style="margin:8px 0 0"><b>「Δt すすむ」で1つずつ増え、「Δt もどる」で1つ消えます。</b>
+        押す前に「次はどこに出ると思う？」と聞いてみてください。</p>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm" id="obSbAdd">今の位置を足す</button>
+        <button class="btn sm" id="obSbUndo">1つ消す</button>
+        <button class="btn sm" id="obSbClear">全部消す</button>
+        <button class="btn sm" id="obSbPng">画像で保存</button>
+        <span class="big" id="obSbCount">0 個</span>
+      </div>
+      <p class="mut small" style="margin:8px 0 0">球が背景より<b>明るい</b>か<b>暗い</b>かで切り替えます。合わないほうを選ぶと球が残りません。</p>
+    </div>
+  </div>
+
+  <div class="subcard">
+    <h3>5. 鉛直も見る（横線）</h3>
+    <div class="row">
+      <button class="btn warn" id="obHL">横線を出す</button>
+      <button class="btn sm" id="obHLApex">最高点にそろえる</button>
+    </div>
+    <p class="mut small" style="margin:8px 0 0" id="obHLRead">—</p>
+    <p class="mut small" style="margin:8px 0 0">オレンジの線を<b>最高点の高さ</b>に、その次の線を<b>Δt あとの高さ</b>に合わせます。
+      その先の線はドラッグできません。<b>「等加速度ならここ」という予測</b>だからです。</p>
+    <p class="mut small" style="margin:8px 0 0">右の数字は<b>線の位置</b>（最高点からの落下距離）で <b>0, 1, 4, 9, 16, 25</b>。
+      そのすぐ左の目盛りは<b>1単位ずつ</b>刻んであり、長い刻みが5つおきです。
+      上から数えれば位置が、<b>線と線のあいだを数えれば 1, 3, 5, 7, 9</b> が出ます。</p>
+    <details><summary>位置は 1, 4, 9, 16／あいだは 1, 3, 5, 7</summary><div class="db">
+      最高点からの落下距離は、Δt を1つの単位として <b>1, 4, 9, 16 …（＝ k²）</b>に比例します。これが線の位置です。<br>
+      そこから <b>となりあう線のあいだの距離</b>を引き算すると
+      4−1＝3、9−4＝5、16−9＝7 となって、<b>1, 3, 5, 7 …</b> という奇数が出てきます。
+      （k² − (k−1)² ＝ 2k−1 なので、必ず奇数になります。）<br>
+      間隔がどんどん広がることは目で見てわかりますが、その広がり方が<b>数えられる整数</b>になっているところが大事です。
+      水平方向が 1, 1, 1, 1 … の等間隔なのと見くらべてください。
+    </div></details>
+  </div>
 </div>
 
 <div class="tabpane hidden" data-pane="observe:v">

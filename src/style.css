@@ -131,6 +131,9 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 
 /* ---- オーバーレイの線 ---- */
 .ovl{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:3}
+/* ストロボの合成画。映像とまったく同じ場所・同じ大きさに重ねる（変形も同じものを当てる）。 */
+.vp canvas.strobe{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+  background:transparent;pointer-events:none;z-index:2}
 .ovl.noev>*{pointer-events:none!important}
 .hline{position:absolute;left:0;right:0;height:0;pointer-events:auto;cursor:ns-resize;touch-action:none}
 .hline::before{content:"";position:absolute;left:0;right:0;top:-14px;height:30px}
@@ -149,7 +152,16 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 .hline.guide .tag{background:var(--ok);color:#04150b}
 .hline.mark .tag{background:var(--mk);color:#2a0020}
 .hline.rule .tag{left:auto;right:5px;top:-11px;background:rgba(0,0,0,.65);color:var(--acc2)}
-.hline.rule.o .tag{color:#ff9f43}
+.hline.rule.o .tag{color:#ff9f43;top:-27px}   /* 0 の札は1段上へ。1 の線と近いと札どうしが重なるため */
+/* 右の数字（最高点からの落下距離）のすぐ左に立てる目盛り。
+   数字だけだと信じるしかないので、1単位ずつ刻んで数えられるようにする。
+   刻みの幅はどこでも同じ（＝ hlU）なので、上から数えれば 1, 4, 9, 16, 25 が、
+   線と線のあいだを数えれば 1, 3, 5, 7, 9 が、同じ1本の目盛りから読める。
+   5つおきを長くしてあるので、16 や 25 を1本ずつ数えずに済む。 */
+.posruler{position:absolute;right:32px;width:20px;pointer-events:none;color:var(--acc2)}
+.posruler .psp{position:absolute;right:0;top:0;bottom:0;width:0;border-right:2px solid currentColor;opacity:.9}
+.posruler .pt{position:absolute;right:0;width:8px;height:0;border-top:1.5px solid currentColor;opacity:.85}
+.posruler .pt.maj{width:17px;opacity:1;border-top-width:2px}
 .dot{position:absolute;width:15px;height:15px;margin:-7.5px 0 0 -7.5px;border-radius:50%;
   border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.55)}
 .dot.d1{background:var(--ok)} .dot.d2{background:var(--acc2)}
