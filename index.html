@@ -327,6 +327,70 @@ body.compact .tabpane{border-radius:10px;padding:12px}
 body.compact .grid2{gap:8px}
 body.compact .subcard{padding:10px}
 
+/* =========================================================
+   広い画面（先生のPC・タブレット）用の外枠
+   body.split のときだけ効きます。中身の作りはスマホ表示と同じです。
+
+   左（70%）に映像と操作バー、右（30%）に設定を置き、
+   スクロールするのは右の設定だけ。設定をいじりながら映像と
+   再生ボタンが見えている状態を、常に保つのが目的です。
+   ========================================================= */
+body.split #app{height:100dvh;overflow:hidden}
+body.split .wrap{flex:1;min-height:0;display:flex;flex-direction:column;
+  padding:10px 12px calc(6px + env(safe-area-inset-bottom));overflow:hidden}
+
+/* 読み込み画面はスクロールさせる。動画が入って1行に畳んだら固定に戻す */
+body.split #secLoad{flex:1 1 auto;min-height:0;overflow-y:auto;margin-bottom:10px}
+body.split #secLoad.collapsed{flex:0 0 auto;overflow:visible;padding:8px 12px}
+
+/* 左70%／右30%。右は狭くなりすぎないよう下限を決めておく */
+body.split #secStage{flex:1 1 auto;min-height:0;display:grid;
+  grid-template-columns:1fr minmax(300px,30%);gap:12px;
+  overflow:hidden;margin-bottom:0}
+body.split #stageCol,body.split #ctrlCol{display:flex;flex-direction:column;
+  min-width:0;min-height:0}
+
+/* ---- 左：映像と操作バー ---- */
+/* 映像は残りの高さいっぱい。高さは中身に左右させない（compact と同じ理由で、
+   映像の枠の大きさをパネルの高さから計算しているため）。 */
+body.split .stage{flex:1 1 auto;min-height:0;gap:6px}
+body.split .stage.one,body.split .stage.over,body.split .stage.side{grid-template-rows:1fr}
+body.split .stage.stack{grid-template-rows:1fr 1fr}
+body.split .panel{min-height:0;display:flex;align-items:center;justify-content:center}
+body.split .vp{position:relative;inset:auto;aspect-ratio:auto}
+body.split .transport{flex:0 0 auto;margin-top:8px}
+
+/* ---- 右：設定 ---- */
+body.split .tabs{margin:0}
+body.split #panes{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+/* 30% の幅では2列は窮屈なので、中の並びは1列に落とす */
+body.split #ctrlCol .grid2{grid-template-columns:1fr}
+body.split #ctrlCol .grid6{grid-template-columns:repeat(3,1fr)}
+body.split #ctrlCol .slider{grid-template-columns:56px 1fr 64px;gap:6px}
+body.split #ctrlCol .tabpane{padding:12px}
+
+/* ---- 右の下端：タブと併用するステップ送り ---- */
+/* タブで飛ぶこともできるが、初めての人は「次へ」だけ押していけば一周する。 */
+body.split #stepbar{flex:0 0 auto;margin-top:8px;padding:8px 0 0}
+body.split #stepbar .btn{min-height:44px}
+body.split #stepbar .stepinfo b{font-size:.9rem}
+
+/* タブは4つあり、30%の幅には横1列で収まらない。
+   スクロールで隠すと「奥にまだある」ことに気づけないので、
+   PCの2カラムでは丸いボタンにして折り返す。 */
+body.split .tabs{flex-wrap:wrap;overflow:visible;gap:5px}
+body.split .tabs button{border:1px solid var(--line);border-radius:10px;
+  padding:6px 10px;font-size:.86rem;min-height:40px}
+body.split .tabs button.on{background:var(--acc);color:#08111c;border-color:var(--acc)}
+body.split .tabpane{border-radius:10px}
+body.split #panes{margin-top:8px}
+
+/* 幅が足りないときは見出しを省いて、ヘッダーを1行に収める */
+@media(max-width:960px){
+  body.split .brand{display:none}
+  body.split #fpsHint{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -434,6 +498,8 @@ body.compact .subcard{padding:10px}
 
 <!-- ================= ステージ ================= -->
 <section class="card hidden" id="secStage">
+  <!-- 左：映像と操作バー／右：設定。body.split のとき横に並びます。 -->
+  <div id="stageCol">
   <div class="stage one" id="stage">
     <div class="panel off" data-side="O1">
       <div class="vp" data-vp="O1"><video data-video="O1" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="O1"></div></div>
@@ -489,6 +555,9 @@ body.compact .subcard{padding:10px}
     </p>
   </div>
 
+  </div><!-- /#stageCol -->
+
+  <div id="ctrlCol">
   <div class="tabs" id="tabs"></div>
   <div id="panes">
 
@@ -818,6 +887,7 @@ body.compact .subcard{padding:10px}
     <div class="stepinfo"><b id="stepTitle">—</b><span class="mut small" id="stepCount"></span></div>
     <button class="btn primary" id="stepNext">次へ →</button>
   </div>
+  </div><!-- /#ctrlCol -->
 </section>
 
 </div><!-- /wrap -->
@@ -1285,10 +1355,12 @@ A.attachZoomGesture=function(p){
    追いかけカメラの速度が並べた途端に変わってしまう。CSS だけだと
    端末差が出るので、パネルの実寸から毎回計算して入れる。 */
 A.fitPanels=function(){
-  var compact=document.body.classList.contains('compact');
+  /* スマホ表示（compact）でも2カラム表示（split）でも、パネルの高さが先に
+     決まっているので、映像の枠はその実寸から計算して入れる。 */
+  var fit=document.body.classList.contains('compact')||document.body.classList.contains('split');
   Object.keys(A.players).forEach(function(k){
     var p=A.players[k], panel=p.vp.parentElement;
-    if(!compact||!p.ready||!p.ar){p.vp.style.width='';p.vp.style.height='';return;}
+    if(!fit||!p.ready||!p.ar){p.vp.style.width='';p.vp.style.height='';return;}
     var W=panel.clientWidth, H=panel.clientHeight;
     if(!W||!H)return;
     var w=W, h=W/p.ar;
@@ -1630,6 +1702,9 @@ function isCompact(){return document.body.classList.contains('compact');}
 function apply(){
   var on=(manual===null)?mq.matches:manual;
   document.body.classList.toggle('compact',on);
+  /* 狭くないときは左右2カラム（左：映像＋操作バー／右：設定）にする。
+     設定をいじっているあいだも映像と再生ボタンを見えたままにするため。 */
+  document.body.classList.toggle('split',!on);
   $('#btnCompact').textContent=on?'PC表示':'スマホ表示';
   render();
 }
@@ -1676,10 +1751,13 @@ function render(){
   var stageOn=!$('#secStage').classList.contains('hidden');
   var compact=isCompact();
 
-  A.show('#stepbar',compact&&stageOn);
+  /* ステップ送りは両方の表示で出す。PCではタブと併用で、
+     タブは飛びたい人用、「次へ」は順にたどりたい人用。 */
+  A.show('#stepbar',stageOn);
   A.show('#tabs',!compact);
 
-  var collapse=compact&&stageOn&&!expanded;
+  /* 読み込みカードは、動画が入ったらどちらの表示でも1行に畳む */
+  var collapse=stageOn&&!expanded;
   A.show('#loadFull',!collapse);
   A.show('#loadBar',collapse);
   $('#secLoad').classList.toggle('collapsed',collapse);

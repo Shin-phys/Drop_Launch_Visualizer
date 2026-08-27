@@ -16,6 +16,9 @@ function isCompact(){return document.body.classList.contains('compact');}
 function apply(){
   var on=(manual===null)?mq.matches:manual;
   document.body.classList.toggle('compact',on);
+  /* 狭くないときは左右2カラム（左：映像＋操作バー／右：設定）にする。
+     設定をいじっているあいだも映像と再生ボタンを見えたままにするため。 */
+  document.body.classList.toggle('split',!on);
   $('#btnCompact').textContent=on?'PC表示':'スマホ表示';
   render();
 }
@@ -62,10 +65,13 @@ function render(){
   var stageOn=!$('#secStage').classList.contains('hidden');
   var compact=isCompact();
 
-  A.show('#stepbar',compact&&stageOn);
+  /* ステップ送りは両方の表示で出す。PCではタブと併用で、
+     タブは飛びたい人用、「次へ」は順にたどりたい人用。 */
+  A.show('#stepbar',stageOn);
   A.show('#tabs',!compact);
 
-  var collapse=compact&&stageOn&&!expanded;
+  /* 読み込みカードは、動画が入ったらどちらの表示でも1行に畳む */
+  var collapse=stageOn&&!expanded;
   A.show('#loadFull',!collapse);
   A.show('#loadBar',collapse);
   $('#secLoad').classList.toggle('collapsed',collapse);

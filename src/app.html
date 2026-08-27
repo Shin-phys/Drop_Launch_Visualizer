@@ -113,6 +113,8 @@
 
 <!-- ================= ステージ ================= -->
 <section class="card hidden" id="secStage">
+  <!-- 左：映像と操作バー／右：設定。body.split のとき横に並びます。 -->
+  <div id="stageCol">
   <div class="stage one" id="stage">
     <div class="panel off" data-side="O1">
       <div class="vp" data-vp="O1"><video data-video="O1" playsinline webkit-playsinline muted preload="auto"></video><div class="ovl" data-ovl="O1"></div></div>
@@ -168,6 +170,9 @@
     </p>
   </div>
 
+  </div><!-- /#stageCol -->
+
+  <div id="ctrlCol">
   <div class="tabs" id="tabs"></div>
   <div id="panes">
 
@@ -497,6 +502,7 @@
     <div class="stepinfo"><b id="stepTitle">—</b><span class="mut small" id="stepCount"></span></div>
     <button class="btn primary" id="stepNext">次へ →</button>
   </div>
+  </div><!-- /#ctrlCol -->
 </section>
 
 </div><!-- /wrap -->

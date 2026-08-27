@@ -454,10 +454,12 @@ A.attachZoomGesture=function(p){
    追いかけカメラの速度が並べた途端に変わってしまう。CSS だけだと
    端末差が出るので、パネルの実寸から毎回計算して入れる。 */
 A.fitPanels=function(){
-  var compact=document.body.classList.contains('compact');
+  /* スマホ表示（compact）でも2カラム表示（split）でも、パネルの高さが先に
+     決まっているので、映像の枠はその実寸から計算して入れる。 */
+  var fit=document.body.classList.contains('compact')||document.body.classList.contains('split');
   Object.keys(A.players).forEach(function(k){
     var p=A.players[k], panel=p.vp.parentElement;
-    if(!compact||!p.ready||!p.ar){p.vp.style.width='';p.vp.style.height='';return;}
+    if(!fit||!p.ready||!p.ar){p.vp.style.width='';p.vp.style.height='';return;}
     var W=panel.clientWidth, H=panel.clientHeight;
     if(!W||!H)return;
     var w=W, h=W/p.ar;
