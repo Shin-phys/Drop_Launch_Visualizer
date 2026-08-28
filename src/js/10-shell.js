@@ -240,6 +240,7 @@ A.on('tab',function(){setTimeout(A.fitPanels,0);});
 A.on('mode',function(){setTimeout(A.fitPanels,0);});
 
 /* ---------- 拡大 ---------- */
+var zoomToldOnce=false;
 Object.keys(A.players).forEach(function(k){A.attachZoomGesture(A.P(k));});
 function zoomStep(f){
   var v=A.view;
@@ -260,6 +261,11 @@ A.on('view',function(){
   $('#zoomVal').textContent=A.view.z.toFixed(1)+'×';
   $('#zoomReset').classList.toggle('ok',A.zoomed());
   A.show('#zoomHint',A.zoomed());
+  /* 狭い画面には説明を置く場所がないので、拡大した最初の1回だけ知らせる */
+  if(document.body.classList.contains('compact')&&A.zoomed()&&!zoomToldOnce){
+    zoomToldOnce=true;
+    A.toast('拡大中：映像を指でなぞると表示位置が動きます',2600);
+  }
 });
 
 /* ---------- 表示の更新 ---------- */

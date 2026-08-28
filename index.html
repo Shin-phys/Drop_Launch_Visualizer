@@ -391,6 +391,21 @@ body.split #panes{margin-top:8px}
   body.split #fpsHint{display:none}
 }
 
+/* ---------------------------------------------------------
+   2カラム用の入れ物（#stageCol／#ctrlCol）は、スマホ表示では
+   「無かったこと」にする。
+   これがないと .stage や #panes が #secStage の直接の子でなくなり、
+   下の flex 指定が丸ごと効かなくなって、設定欄がスクロールしなくなる。
+   --------------------------------------------------------- */
+body.compact #stageCol,body.compact #ctrlCol{display:contents}
+
+/* 拡大中の説明は3行あり、狭い画面では設定欄を押しつぶしてしまう。
+   ここでは出さず、拡大した最初の1回だけトーストで伝える（10-shell.js）。 */
+body.compact #zoomHint{display:none}
+
+/* 画面が短い端末では映像を少し譲って、下の「次へ」まで画面に収める */
+@media(max-height:720px){body.compact .stage{height:32dvh}}
+
 </style>
 </head>
 <body>
@@ -1638,6 +1653,7 @@ A.on('tab',function(){setTimeout(A.fitPanels,0);});
 A.on('mode',function(){setTimeout(A.fitPanels,0);});
 
 /* ---------- 拡大 ---------- */
+var zoomToldOnce=false;
 Object.keys(A.players).forEach(function(k){A.attachZoomGesture(A.P(k));});
 function zoomStep(f){
   var v=A.view;
@@ -1658,6 +1674,11 @@ A.on('view',function(){
   $('#zoomVal').textContent=A.view.z.toFixed(1)+'×';
   $('#zoomReset').classList.toggle('ok',A.zoomed());
   A.show('#zoomHint',A.zoomed());
+  /* 狭い画面には説明を置く場所がないので、拡大した最初の1回だけ知らせる */
+  if(document.body.classList.contains('compact')&&A.zoomed()&&!zoomToldOnce){
+    zoomToldOnce=true;
+    A.toast('拡大中：映像を指でなぞると表示位置が動きます',2600);
+  }
 });
 
 /* ---------- 表示の更新 ---------- */
