@@ -713,8 +713,8 @@ var mode={
   zones:function(){return ['O'];},
   nameSlot:function(){return 'O';},
   onFile:function(t,file){A.loadInto('O1',file);A.loadInto('O2',file);},
-  tabs:[{id:'range',label:'区間を決める'},{id:'h',label:'水平：等速か？'},
-        {id:'v',label:'鉛直：時間反転'},{id:'sum',label:'まとめ'}],
+  tabs:[{id:'range',label:'区間を決める'},{id:'h',label:'水平：速度は？'},
+        {id:'v',label:'鉛直：逆再生すると？'},{id:'sum',label:'まとめ'}],
   canOpenTab:function(id){
     if((id==='h'||id==='v')&&!ready3()){
       A.toast('先に「区間を決める」で、開始・最高点・おわりの3つを設定してください。');return false;

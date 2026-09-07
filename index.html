@@ -502,7 +502,7 @@ body.compact #zoomHint{display:none}
         <p>・<b>「超スローモーション」は避ける</b>：一部の機種にある、コマを補間して作るモードです。実際には撮影されていないコマが混ざるので、物理の観察には使えません。素直な 120／240fps のスローを選んでください。</p>
         <p>・<b>斜めに投げる</b>：真上に投げると水平成分が見えません。30〜60度くらいの角度で、画面を横切るように飛ばしてください。</p>
         <p>・<b>手をはなれた後だけ</b>を観察します。手で押している間は力がはたらいているので、法則が違います。</p>
-        <p>・<b>最高点は目で1コマを選ばない</b>：最高点の近くではボールがほとんど動かず、どのコマも同じに見えます。fps を上げても目視の精度は上がりません。「鉛直：時間反転」のミラー再生で上りと下りを重ね、ぴったり合う位置を探すほうが正確です。</p>
+        <p>・<b>最高点は目で1コマを選ばない</b>：最高点の近くではボールがほとんど動かず、どのコマも同じに見えます。fps を上げても目視の精度は上がりません。「鉛直：逆再生すると？」のミラー再生で上りと下りを重ね、ぴったり合う位置を探すほうが正確です。</p>
         <p>・<b>ものさしを一緒に写す</b>：鉛直に立てたものさしを画面内に入れておくと、落下距離を実際の長さで読み取れます。</p>
       </div></details>
     </div>
@@ -605,7 +605,7 @@ body.compact #zoomHint{display:none}
 </div>
 
 <div class="tabpane hidden" data-pane="observe:h">
-  <p style="margin-top:0">斜方投射された物体が<b>帯の中に収まり続ける</b>カメラ速度を探し出そう。</p>
+  <p style="margin-top:0">カメラ（＝帯）は水平方向に<b>一定の速度</b>で動きます。速度を調整して、ちょうど良い値を探そう。</p>
 
   <div class="subcard">
     <h3>1. 帯を置く</h3>
@@ -715,7 +715,7 @@ body.compact #zoomHint{display:none}
 
 <div class="tabpane hidden" data-pane="observe:v">
   <p style="margin-top:0">最高点を <b>t = 0</b> として、<b>下り（+t）</b>と<b>上りの逆再生（−t）</b>を同時に流します。
-    ふたつは同じに見えますか。</p>
+    ふたつはどう見えますか。</p>
   <div class="row"><span class="small">並べ方</span>
     <div class="seg sm" id="obMirSeg">
       <button data-m="side" class="on">左右に並べる</button><button data-m="over">重ねる</button>
@@ -2534,8 +2534,8 @@ var mode={
   zones:function(){return ['O'];},
   nameSlot:function(){return 'O';},
   onFile:function(t,file){A.loadInto('O1',file);A.loadInto('O2',file);},
-  tabs:[{id:'range',label:'区間を決める'},{id:'h',label:'水平：等速か？'},
-        {id:'v',label:'鉛直：時間反転'},{id:'sum',label:'まとめ'}],
+  tabs:[{id:'range',label:'区間を決める'},{id:'h',label:'水平：速度は？'},
+        {id:'v',label:'鉛直：逆再生すると？'},{id:'sum',label:'まとめ'}],
   canOpenTab:function(id){
     if((id==='h'||id==='v')&&!ready3()){
       A.toast('先に「区間を決める」で、開始・最高点・おわりの3つを設定してください。');return false;
