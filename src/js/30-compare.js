@@ -131,23 +131,29 @@ $('#cmOvop').addEventListener('input',function(){
   C.ovop=parseFloat(this.value);$('#cmOvopV').textContent=Math.round(C.ovop*100)+'%';applyLayout();
 });
 $('#cmFitSel').addEventListener('change',function(){C.fit=this.value;applyFit();});
-$('#cmGuideToggle').addEventListener('click',function(){
+/* ガイド線のボタンは「表示」と「開始点」の2か所にある。見た目は必ずそろえる。 */
+function syncGuideBtns(){
+  ['#cmGuideToggle','#cmGuideToggle2'].forEach(function(sel){
+    var b=$(sel); if(!b)return;
+    b.textContent=C.showGuides?'ガイド線を隠す':'ガイド線を表示';
+    b.classList.toggle('ok',C.showGuides);
+  });
+}
+function toggleGuides(){
   C.showGuides=!C.showGuides;
   if(C.showGuides&&C.guides.length===0)C.guides.push({id:++C.gid,y:0.35});
-  this.textContent=C.showGuides?'ガイド線を隠す':'ガイド線を表示';
-  this.classList.toggle('ok',C.showGuides); paint();
-});
+  syncGuideBtns(); paint();
+}
+$('#cmGuideToggle').addEventListener('click',toggleGuides);
+$('#cmGuideToggle2').addEventListener('click',toggleGuides);
 $('#cmGuideAdd').addEventListener('click',function(){
   if(C.guides.length>=3){A.toast('ガイド線は3本までです。');return;}
   C.guides.push({id:++C.gid,y:clamp(0.3+C.guides.length*0.18,0,0.95)});
-  C.showGuides=true;
-  $('#cmGuideToggle').textContent='ガイド線を隠す';$('#cmGuideToggle').classList.add('ok');
-  paint();
+  C.showGuides=true; syncGuideBtns(); paint();
 });
 $('#cmGuideClear').addEventListener('click',function(){
   C.guides=[];C.showGuides=false;
-  $('#cmGuideToggle').textContent='ガイド線を表示';$('#cmGuideToggle').classList.remove('ok');
-  paint();
+  syncGuideBtns(); paint();
 });
 $('#cmRulerToggle').addEventListener('click',function(){
   C.showRuler=!C.showRuler;
@@ -291,8 +297,7 @@ A.compareLoadJson=function(d){
     p.scale=src.scale||1;p.offsetY=src.offsetY||0;
     p.panX=(typeof src.panX==='number')?src.panX:0.5;
   });
-  $('#cmGuideToggle').textContent=C.showGuides?'ガイド線を隠す':'ガイド線を表示';
-  $('#cmGuideToggle').classList.toggle('ok',C.showGuides);
+  syncGuideBtns();
   $('#cmRulerToggle').textContent=C.showRuler?'目盛りを隠す':'目盛りを表示';
   $('#cmRulerToggle').classList.toggle('ok',C.showRuler);
   $('#cmMarkToggle').textContent=C.showMarks?'開始位置マーカーを隠す':'開始位置マーカーを出す';

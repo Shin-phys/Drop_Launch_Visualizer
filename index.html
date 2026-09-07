@@ -589,6 +589,14 @@ body.compact #zoomHint{display:none}
   <div class="stepline"><span class="num" id="obN3">3</span>
     <button class="btn" data-mark="fEnd">ここを「おわり」に</button>
     <span class="mut small">おわり <b id="obVEnd">—</b></span></div>
+  <div class="subcard">
+    <h3>高さの線であたりをつける</h3>
+    <div class="row">
+      <button class="btn" id="obRG">高さの線を出す</button>
+      <button class="btn sm" id="obRGpick">ボールをタップ</button>
+    </div>
+    <p class="mut small" style="margin:8px 0 0">ボールの上端に線を合わせ、コマ送りします。線を<b>越えなくなった</b>あたりが最高点です。線はドラッグでも動かせます。</p>
+  </div>
   <div class="note small" style="margin-top:10px">最高点は「上がるのが止まって、下がり始める直前のコマ」です。迷ったら、上下の動きがいちばん小さいところを選んでください。</div>
   <div class="row" style="margin-top:10px">
     <button class="btn ok" id="obRangeDone">決まった → 水平を見る</button>
@@ -802,6 +810,10 @@ body.compact #zoomHint{display:none}
         <button class="btn sm" data-cmadj="R,1">＋1コマ</button>
         <span class="mut small">開始点 <b data-sf2="R">0</b> コマ（<b data-st2="R">0.000</b> s）</span></div>
     </div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn" id="cmGuideToggle2">ガイド線を表示</button>
+    <span class="mut small">水平の線をボールの上端に合わせてコマ送りすると、線を越えなくなるところが最高点です（線はドラッグで移動）。</span>
   </div>
   <p class="mut small" style="margin-bottom:0">最高点は「上向きの動きが止まって下向きに変わる直前のコマ」です。左右どちらも設定すると、シークバーの 0 が両方の開始点になります。</p>
 </div>
@@ -1820,6 +1832,8 @@ var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,sMark:0,arm:0,
   showGrid:false,showPred:false,camOn:false,vx:0,
   maskOn:false,maskW:0.06,maskOp:0.75,bandOp:0,lineOp:0.5,sbs:false,camX:0.5,
   mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4,mirAdj:0,
+  /* 高さの線（最高点さがし用。区間を決める画面でも使う） */
+  showRG:false,rgY:0.35,
   /* ストロボ：shots は「もう通り過ぎた位置」の素のコマ。いまの位置は生の映像が受け持つ */
   strobeOn:false,sbMode:'light',shots:[],
   /* 横線（最高点からの落下距離 1,4,9,16… ＝ 間隔が 1:3:5:7…） */
@@ -1886,10 +1900,22 @@ function armUI(){
   var hb=$('#hintbar');
   if(hb){hb.textContent='タップするあいだ、カメラは止めています';A.show('#hintbar',O.arm>0);}
   $('#obApexPick').classList.toggle('warn',O.arm===3);
+  var rgp=$('#obRGpick'); if(rgp)rgp.classList.toggle('warn',O.arm===5);
   $('#obCamPick').classList.toggle('warn',O.arm===4);
   paint();
 }
 $('#obApexPick').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;O.arm=3;armUI();});
+
+/* ---------- 高さの線（区間を決める画面） ---------- */
+function syncRG(){
+  var b=$('#obRG'); if(!b)return;
+  b.classList.toggle('ok',O.showRG);
+  b.textContent=O.showRG?'高さの線を消す':'高さの線を出す';
+  paint();
+}
+A.observeSyncRG=syncRG;
+$('#obRG').addEventListener('click',function(){O.showRG=!O.showRG;syncRG();});
+$('#obRGpick').addEventListener('click',function(){A.setPlaying(false);O.arm=5;armUI();});
 
 /* 押した位置と離した位置がほぼ同じ（＝タップ）のときだけ点を取る。
    こうしておくと、拡大中に指でなぞって移動しても誤って点が入らない。 */
@@ -1912,6 +1938,9 @@ function pick(pid){
     if(O.arm===3){
       O.apexX=x;O.arm=0;armUI();
       $('#obApexV').textContent='横 '+(x*100).toFixed(1)+'%';
+    }else if(O.arm===5){
+      /* ボールの位置に「高さの線」を置く。最高点さがしの目じるしにする */
+      O.rgY=y; O.showRG=true; O.arm=0; armUI(); syncRG();
     }else if(O.arm===4){
       /* 「このコマで、ボールはここ」を基準にする。以後のカメラの位置はここから計算する */
       O.arm=0; O.sMark=A.S.s; armUI(); setCamX(x);
@@ -2351,6 +2380,14 @@ function paint(){
       });
     }
   }
+  if(tab==='range'&&O.showRG){
+    /* 最高点をさがすときの目じるし。ボールの上端に合わせておき、
+       コマ送りで線を越えなくなったところが最高点のあたり。 */
+    var rg=A.ov.el(p1,'hline guide','高さ');
+    rg.addEventListener('pointerdown',function(ev){
+      A.dragY(ev,p1.vp,function(y){O.rgY=y;place();});
+    });
+  }
   if(tab==='v'){
     ['O1','O2'].forEach(function(id){
       var p=A.P(id);
@@ -2427,6 +2464,10 @@ function place(){
       }
     }
   }
+  if(A.S.tab==='range'){
+    var rg=P1().ovl.querySelector('.hline.guide');
+    if(rg)rg.style.top=(O.rgY*100)+'%';
+  }
   if(A.S.tab==='v'){
     ['O1','O2'].forEach(function(id){
       var o=A.P(id).ovl;
@@ -2442,7 +2483,7 @@ $('#obSave').addEventListener('click',function(){
   A.download('shaho-kansatsu.json',{app:'projectile-lab',part:'observe',version:2,
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
     sMark:O.sMark,vx:O.vx,
-    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,mirAdj:O.mirAdj,
+    apexX:O.apexX,hgY:O.hgY,rgY:O.rgY,mir:O.mir,flip:O.flip,ovop:O.ovop,mirAdj:O.mirAdj,
     camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,bandOp:O.bandOp,lineOp:O.lineOp,
     sbMode:O.sbMode,showHL:O.showHL,hlY0:O.hlY0,hlU:O.hlU,name:P1().name});
   $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
@@ -2451,7 +2492,7 @@ $('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jso
 A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
-  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY','mirAdj',
+  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY','rgY','mirAdj',
    'camX','maskW','maskOp','bandOp','lineOp','hlY0','hlU'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
   if(d.sbMode==='light'||d.sbMode==='dark'){
@@ -2469,7 +2510,7 @@ A.observeLoadJson=function(d){
   $('#obBandOp').value=String(O.bandOp);$('#obBandOpv').textContent=Math.round(O.bandOp*100)+'%';
   $('#obLineOp').value=String(O.lineOp);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';
   $('#obCamV').value=String(O.vx);$('#obCamVnum').value=O.vx.toFixed(3);
-  fillDt(); refreshRange(); syncHL();
+  fillDt(); refreshRange(); syncHL(); syncRG();
   syncHButtons(); setStage();
   $('#obSaveMsg').textContent='読み込みました。動画は別途読み込んでください。';
 };
@@ -2698,23 +2739,29 @@ $('#cmOvop').addEventListener('input',function(){
   C.ovop=parseFloat(this.value);$('#cmOvopV').textContent=Math.round(C.ovop*100)+'%';applyLayout();
 });
 $('#cmFitSel').addEventListener('change',function(){C.fit=this.value;applyFit();});
-$('#cmGuideToggle').addEventListener('click',function(){
+/* ガイド線のボタンは「表示」と「開始点」の2か所にある。見た目は必ずそろえる。 */
+function syncGuideBtns(){
+  ['#cmGuideToggle','#cmGuideToggle2'].forEach(function(sel){
+    var b=$(sel); if(!b)return;
+    b.textContent=C.showGuides?'ガイド線を隠す':'ガイド線を表示';
+    b.classList.toggle('ok',C.showGuides);
+  });
+}
+function toggleGuides(){
   C.showGuides=!C.showGuides;
   if(C.showGuides&&C.guides.length===0)C.guides.push({id:++C.gid,y:0.35});
-  this.textContent=C.showGuides?'ガイド線を隠す':'ガイド線を表示';
-  this.classList.toggle('ok',C.showGuides); paint();
-});
+  syncGuideBtns(); paint();
+}
+$('#cmGuideToggle').addEventListener('click',toggleGuides);
+$('#cmGuideToggle2').addEventListener('click',toggleGuides);
 $('#cmGuideAdd').addEventListener('click',function(){
   if(C.guides.length>=3){A.toast('ガイド線は3本までです。');return;}
   C.guides.push({id:++C.gid,y:clamp(0.3+C.guides.length*0.18,0,0.95)});
-  C.showGuides=true;
-  $('#cmGuideToggle').textContent='ガイド線を隠す';$('#cmGuideToggle').classList.add('ok');
-  paint();
+  C.showGuides=true; syncGuideBtns(); paint();
 });
 $('#cmGuideClear').addEventListener('click',function(){
   C.guides=[];C.showGuides=false;
-  $('#cmGuideToggle').textContent='ガイド線を表示';$('#cmGuideToggle').classList.remove('ok');
-  paint();
+  syncGuideBtns(); paint();
 });
 $('#cmRulerToggle').addEventListener('click',function(){
   C.showRuler=!C.showRuler;
@@ -2858,8 +2905,7 @@ A.compareLoadJson=function(d){
     p.scale=src.scale||1;p.offsetY=src.offsetY||0;
     p.panX=(typeof src.panX==='number')?src.panX:0.5;
   });
-  $('#cmGuideToggle').textContent=C.showGuides?'ガイド線を隠す':'ガイド線を表示';
-  $('#cmGuideToggle').classList.toggle('ok',C.showGuides);
+  syncGuideBtns();
   $('#cmRulerToggle').textContent=C.showRuler?'目盛りを隠す':'目盛りを表示';
   $('#cmRulerToggle').classList.toggle('ok',C.showRuler);
   $('#cmMarkToggle').textContent=C.showMarks?'開始位置マーカーを隠す':'開始位置マーカーを出す';

@@ -11,6 +11,8 @@ var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,sMark:0,arm:0,
   showGrid:false,showPred:false,camOn:false,vx:0,
   maskOn:false,maskW:0.06,maskOp:0.75,bandOp:0,lineOp:0.5,sbs:false,camX:0.5,
   mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4,mirAdj:0,
+  /* 高さの線（最高点さがし用。区間を決める画面でも使う） */
+  showRG:false,rgY:0.35,
   /* ストロボ：shots は「もう通り過ぎた位置」の素のコマ。いまの位置は生の映像が受け持つ */
   strobeOn:false,sbMode:'light',shots:[],
   /* 横線（最高点からの落下距離 1,4,9,16… ＝ 間隔が 1:3:5:7…） */
@@ -77,10 +79,22 @@ function armUI(){
   var hb=$('#hintbar');
   if(hb){hb.textContent='タップするあいだ、カメラは止めています';A.show('#hintbar',O.arm>0);}
   $('#obApexPick').classList.toggle('warn',O.arm===3);
+  var rgp=$('#obRGpick'); if(rgp)rgp.classList.toggle('warn',O.arm===5);
   $('#obCamPick').classList.toggle('warn',O.arm===4);
   paint();
 }
 $('#obApexPick').addEventListener('click',function(){A.setPlaying(false);A.S.s=0;O.arm=3;armUI();});
+
+/* ---------- 高さの線（区間を決める画面） ---------- */
+function syncRG(){
+  var b=$('#obRG'); if(!b)return;
+  b.classList.toggle('ok',O.showRG);
+  b.textContent=O.showRG?'高さの線を消す':'高さの線を出す';
+  paint();
+}
+A.observeSyncRG=syncRG;
+$('#obRG').addEventListener('click',function(){O.showRG=!O.showRG;syncRG();});
+$('#obRGpick').addEventListener('click',function(){A.setPlaying(false);O.arm=5;armUI();});
 
 /* 押した位置と離した位置がほぼ同じ（＝タップ）のときだけ点を取る。
    こうしておくと、拡大中に指でなぞって移動しても誤って点が入らない。 */
@@ -103,6 +117,9 @@ function pick(pid){
     if(O.arm===3){
       O.apexX=x;O.arm=0;armUI();
       $('#obApexV').textContent='横 '+(x*100).toFixed(1)+'%';
+    }else if(O.arm===5){
+      /* ボールの位置に「高さの線」を置く。最高点さがしの目じるしにする */
+      O.rgY=y; O.showRG=true; O.arm=0; armUI(); syncRG();
     }else if(O.arm===4){
       /* 「このコマで、ボールはここ」を基準にする。以後のカメラの位置はここから計算する */
       O.arm=0; O.sMark=A.S.s; armUI(); setCamX(x);
@@ -542,6 +559,14 @@ function paint(){
       });
     }
   }
+  if(tab==='range'&&O.showRG){
+    /* 最高点をさがすときの目じるし。ボールの上端に合わせておき、
+       コマ送りで線を越えなくなったところが最高点のあたり。 */
+    var rg=A.ov.el(p1,'hline guide','高さ');
+    rg.addEventListener('pointerdown',function(ev){
+      A.dragY(ev,p1.vp,function(y){O.rgY=y;place();});
+    });
+  }
   if(tab==='v'){
     ['O1','O2'].forEach(function(id){
       var p=A.P(id);
@@ -618,6 +643,10 @@ function place(){
       }
     }
   }
+  if(A.S.tab==='range'){
+    var rg=P1().ovl.querySelector('.hline.guide');
+    if(rg)rg.style.top=(O.rgY*100)+'%';
+  }
   if(A.S.tab==='v'){
     ['O1','O2'].forEach(function(id){
       var o=A.P(id).ovl;
@@ -633,7 +662,7 @@ $('#obSave').addEventListener('click',function(){
   A.download('shaho-kansatsu.json',{app:'projectile-lab',part:'observe',version:2,
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
     sMark:O.sMark,vx:O.vx,
-    apexX:O.apexX,hgY:O.hgY,mir:O.mir,flip:O.flip,ovop:O.ovop,mirAdj:O.mirAdj,
+    apexX:O.apexX,hgY:O.hgY,rgY:O.rgY,mir:O.mir,flip:O.flip,ovop:O.ovop,mirAdj:O.mirAdj,
     camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,bandOp:O.bandOp,lineOp:O.lineOp,
     sbMode:O.sbMode,showHL:O.showHL,hlY0:O.hlY0,hlU:O.hlU,name:P1().name});
   $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
@@ -642,7 +671,7 @@ $('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jso
 A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
-  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY','mirAdj',
+  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY','rgY','mirAdj',
    'camX','maskW','maskOp','bandOp','lineOp','hlY0','hlU'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
   if(d.sbMode==='light'||d.sbMode==='dark'){
@@ -660,7 +689,7 @@ A.observeLoadJson=function(d){
   $('#obBandOp').value=String(O.bandOp);$('#obBandOpv').textContent=Math.round(O.bandOp*100)+'%';
   $('#obLineOp').value=String(O.lineOp);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';
   $('#obCamV').value=String(O.vx);$('#obCamVnum').value=O.vx.toFixed(3);
-  fillDt(); refreshRange(); syncHL();
+  fillDt(); refreshRange(); syncHL(); syncRG();
   syncHButtons(); setStage();
   $('#obSaveMsg').textContent='読み込みました。動画は別途読み込んでください。';
 };

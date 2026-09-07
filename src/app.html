@@ -89,7 +89,7 @@
       <b>撮影のポイント</b>
       <ul>
         <li>スマホは<b>横向き</b>に固定し、撮り終わるまで触らない（ズーム・向き・位置を変えない）</li>
-        <li><b>斜方投射と自由落下を続けて1本の動画に</b>撮る（条件がそろい、②でそのまま比べられます）</li>
+        <li><b>斜方投射と自由落下をそれぞれ</b>撮る</li>
         <li>カメラは<b>遠くに置いてズーム</b>して撮る</li>
         <li><b>240fps のスロー撮影</b>を推奨（最低でも 120fps）。そのぶん暗くなるので明るい場所で</li>
         <li>落とす位置と投げる位置は<b>カメラから同じ距離</b>に（床にテープで印を）</li>
@@ -189,6 +189,14 @@
   <div class="stepline"><span class="num" id="obN3">3</span>
     <button class="btn" data-mark="fEnd">ここを「おわり」に</button>
     <span class="mut small">おわり <b id="obVEnd">—</b></span></div>
+  <div class="subcard">
+    <h3>高さの線であたりをつける</h3>
+    <div class="row">
+      <button class="btn" id="obRG">高さの線を出す</button>
+      <button class="btn sm" id="obRGpick">ボールをタップ</button>
+    </div>
+    <p class="mut small" style="margin:8px 0 0">ボールの上端に線を合わせ、コマ送りします。線を<b>越えなくなった</b>あたりが最高点です。線はドラッグでも動かせます。</p>
+  </div>
   <div class="note small" style="margin-top:10px">最高点は「上がるのが止まって、下がり始める直前のコマ」です。迷ったら、上下の動きがいちばん小さいところを選んでください。</div>
   <div class="row" style="margin-top:10px">
     <button class="btn ok" id="obRangeDone">決まった → 水平を見る</button>
@@ -402,6 +410,10 @@
         <button class="btn sm" data-cmadj="R,1">＋1コマ</button>
         <span class="mut small">開始点 <b data-sf2="R">0</b> コマ（<b data-st2="R">0.000</b> s）</span></div>
     </div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button class="btn" id="cmGuideToggle2">ガイド線を表示</button>
+    <span class="mut small">水平の線をボールの上端に合わせてコマ送りすると、線を越えなくなるところが最高点です（線はドラッグで移動）。</span>
   </div>
   <p class="mut small" style="margin-bottom:0">最高点は「上向きの動きが止まって下向きに変わる直前のコマ」です。左右どちらも設定すると、シークバーの 0 が両方の開始点になります。</p>
 </div>
