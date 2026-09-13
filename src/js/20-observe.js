@@ -668,6 +668,7 @@ function setStage(){
     (tab==='v')?'下り（+t）':(sbBoth?'カメラから見る':(two?'追いかけカメラ':'映像'));
   document.querySelector('[data-chip="O2"]').textContent=
     (tab==='v')?'逆再生（上り）':(sbBoth?'映像全体':'もとの映像');
+  A.refit();
   paint();
 }
 function paint(){

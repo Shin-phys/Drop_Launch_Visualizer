@@ -469,6 +469,12 @@ A.fitPanels=function(){
     p.vp.style.height=Math.round(h)+'px';
   });
 };
+/* 並べ方や切り取りを変えると、パネルの大きさだけが変わる。
+   ResizeObserver は #stage しか見ておらず、ステージ自体の大きさは変わらないので反応しない。
+   呼び直さないと枠が前の並べ方のまま残り、縦横比が映像と合わなくなって、
+   線や目盛りが絵の中の別の場所を指すようになる。変えた側から呼ぶ。
+   位置が確定してから測りたいので1フレーム待つ。 */
+A.refit=function(){requestAnimationFrame(function(){A.fitPanels();});};
 
 /* ---------- オーバーレイ（線・点） ---------- */
 A.ov = {

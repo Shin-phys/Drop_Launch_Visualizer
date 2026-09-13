@@ -173,6 +173,7 @@ function applyLayout(){
   document.querySelector('.panel[data-side="R"]').classList.toggle('dim',C.layout==='over');
   A.show('#cmOvopRow',C.layout==='over');
   $$('#cmLayoutSeg button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-layout')===C.layout);});
+  A.refit();
 }
 function applyFit(){
   var ar=(C.fit==='full')?C.ar:(C.fit==='3:4'?0.75:9/16);
@@ -182,6 +183,7 @@ function applyFit(){
     p.video.style.objectFit=(C.fit==='full')?'contain':'cover';
     A.applyTransform(p,0);
   });
+  A.refit();
 }
 
 /* ---------- 調整 ---------- */

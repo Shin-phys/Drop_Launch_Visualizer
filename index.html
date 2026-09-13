@@ -123,7 +123,10 @@ details .db{font-size:.88rem;color:var(--mut);margin-top:6px}
 .stage.over .panel.dim{opacity:var(--ovop)}
 .stage.over .panel.dim .chip,.stage.over .panel.dim .fnum{visibility:hidden}
 @media(max-width:760px){.stage.side{grid-template-columns:1fr 1fr}}
-.panel{position:relative;background:#000;border:2px solid #20262f;border-radius:12px;overflow:hidden}
+/* isolation：合成画（canvas.strobe は z-index:2）を、このパネルの中に閉じ込める。
+   これが無いと z-index がステージ側にまで効いてしまい、半透明で重ねたときに
+   左パネルの合成画が右パネルより前に描かれて、右の映像がまるごと隠れる。 */
+.panel{position:relative;isolation:isolate;background:#000;border:2px solid #20262f;border-radius:12px;overflow:hidden}
 .panel.off{display:none!important}   /* body.compact .panel より弱くならないように */
 .panel.active{border-color:var(--acc)}
 .vp{position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;touch-action:none}
@@ -302,7 +305,7 @@ body.compact .stage.stack{grid-template-rows:1fr 1fr}
    .vp が映像と別の縦横比だと左右に黒帯ができ、「画面幅」の意味がレイアウトごとに
    変わってしまう（追いかけカメラの速度が、並べた途端に変わる原因になる）。 */
 body.compact .panel{min-height:0;display:flex;align-items:center;justify-content:center}
-body.compact .vp{position:relative;inset:auto;aspect-ratio:auto}
+body.compact .vp{position:relative;inset:auto;aspect-ratio:auto;flex:0 0 auto}
 body.compact .transport{flex:0 0 auto;margin-top:6px;padding:7px}
 body.compact .transport .row{gap:6px}
 body.compact .transport .btn[data-step="-10"],
@@ -357,7 +360,8 @@ body.split .stage{flex:1 1 auto;min-height:0;gap:6px}
 body.split .stage.one,body.split .stage.over,body.split .stage.side{grid-template-rows:1fr}
 body.split .stage.stack{grid-template-rows:1fr 1fr}
 body.split .panel{min-height:0;display:flex;align-items:center;justify-content:center}
-body.split .vp{position:relative;inset:auto;aspect-ratio:auto}
+/* fitPanels が入れた幅を flex に縮められると、枠の縦横比が映像と合わなくなる */
+body.split .vp{position:relative;inset:auto;aspect-ratio:auto;flex:0 0 auto}
 body.split .transport{flex:0 0 auto;margin-top:8px}
 
 /* ---- 右：設定 ---- */
@@ -1479,6 +1483,12 @@ A.fitPanels=function(){
     p.vp.style.height=Math.round(h)+'px';
   });
 };
+/* 並べ方や切り取りを変えると、パネルの大きさだけが変わる。
+   ResizeObserver は #stage しか見ておらず、ステージ自体の大きさは変わらないので反応しない。
+   呼び直さないと枠が前の並べ方のまま残り、縦横比が映像と合わなくなって、
+   線や目盛りが絵の中の別の場所を指すようになる。変えた側から呼ぶ。
+   位置が確定してから測りたいので1フレーム待つ。 */
+A.refit=function(){requestAnimationFrame(function(){A.fitPanels();});};
 
 /* ---------- オーバーレイ（線・点） ---------- */
 A.ov = {
@@ -2572,6 +2582,7 @@ function setStage(){
     (tab==='v')?'下り（+t）':(sbBoth?'カメラから見る':(two?'追いかけカメラ':'映像'));
   document.querySelector('[data-chip="O2"]').textContent=
     (tab==='v')?'逆再生（上り）':(sbBoth?'映像全体':'もとの映像');
+  A.refit();
   paint();
 }
 function paint(){
@@ -3030,6 +3041,7 @@ function applyLayout(){
   document.querySelector('.panel[data-side="R"]').classList.toggle('dim',C.layout==='over');
   A.show('#cmOvopRow',C.layout==='over');
   $$('#cmLayoutSeg button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-layout')===C.layout);});
+  A.refit();
 }
 function applyFit(){
   var ar=(C.fit==='full')?C.ar:(C.fit==='3:4'?0.75:9/16);
@@ -3039,6 +3051,7 @@ function applyFit(){
     p.video.style.objectFit=(C.fit==='full')?'contain':'cover';
     A.applyTransform(p,0);
   });
+  A.refit();
 }
 
 /* ---------- 調整 ---------- */
