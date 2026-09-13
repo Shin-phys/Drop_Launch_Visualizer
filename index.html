@@ -2158,13 +2158,16 @@ function drawStrobe(){
   if(!on){ if(p.sc)A.show(p.sc,false); return; }
   var c=A.strobeCv(p), g=c.getContext('2d');
   if(shiftActive()){
-    /* ずらした板（過去ぶん）を下地にして、いまのコマも同じ規則でずらして1枚載せる。
-       溜めた枚数によらず描画は2回のまま。 */
+    /* 下地を「合成の効かない側」で塗ってから、ずらした板といまのコマを明暗くらべで載せる。
+       毎回ここから描き直すので、前のコマの絵が残ることがない。
+       いまのコマは <video> のままではなく板に写してから重ねる（上の liveCv を参照）。 */
     syncShiftTrail();
     g.globalCompositeOperation='source-over';
-    g.drawImage(strailCv(),0,0);
+    g.fillStyle=(O.sbMode==='dark')?'#ffffff':'#000000';
+    g.fillRect(0,0,c.width,c.height);
     g.globalCompositeOperation=sbOp();
-    g.drawImage(v,shiftPx(A.S.s),0,c.width,c.height);
+    g.drawImage(strailCv(),0,0);
+    g.drawImage(liveCv(),shiftPx(A.S.s),0);
     g.globalCompositeOperation='source-over';
   }else{
     g.globalCompositeOperation='source-over';
@@ -2284,6 +2287,22 @@ function shiftT0(){
 function shiftPx(t){
   var w=P1().video.videoWidth||0;
   return -O.sv*(t-shiftT0())*w;
+}
+/* いまのコマを写しておく板。
+   iOS Safari は <video> を合成モード付きで描くと、モードを無視して上書きしてしまう。
+   そのまま重ねると、せっかく溜めた球が生のコマで塗りつぶされる。
+   いったんキャンバスに写してから重ねれば、どのブラウザでも同じように合成される。 */
+var live=null;
+function liveCv(){
+  var v=P1().video;
+  if(!live)live=document.createElement('canvas');
+  var w=v.videoWidth||16, h=v.videoHeight||9;
+  if(live.width!==w||live.height!==h){live.width=w;live.height=h;}
+  var g=live.getContext('2d');
+  g.globalCompositeOperation='source-over';
+  g.clearRect(0,0,w,h);
+  g.drawImage(v,0,0,w,h);
+  return live;
 }
 var strail=null, strailKey='';
 function strailCv(){
