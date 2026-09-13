@@ -215,8 +215,16 @@
     </div>
     <div id="obBandRow" class="hidden">
       <div class="slider"><span>位置</span><input type="range" id="obCamX" min="0" max="1" step="0.005" value="0.5"><span class="v"><b id="obCamXv">50%</b></span></div>
-      <div class="slider"><span>幅</span><input type="range" id="obMaskW" min="0.02" max="0.5" step="0.01" value="0.06"><span class="v"><b id="obMaskWv">6%</b></span></div>
-      <p class="mut small" style="margin:0">幅はボールの大きさくらいに。帯はドラッグでも動きます。</p>
+      <div class="grid6">
+        <button class="btn sm" data-camdx="-0.02">−0.02</button>
+        <button class="btn sm" data-camdx="-0.005">−0.005</button>
+        <button class="btn sm" data-camdx="-0.001">−0.001</button>
+        <button class="btn sm" data-camdx="0.001">＋0.001</button>
+        <button class="btn sm" data-camdx="0.005">＋0.005</button>
+        <button class="btn sm" data-camdx="0.02">＋0.02</button>
+      </div>
+      <div class="slider"><span>幅</span><input type="range" id="obMaskW" min="0.015" max="0.5" step="0.005" value="0.06"><span class="v"><b id="obMaskWv">6%</b></span></div>
+      <p class="mut small" style="margin:0">幅はボールの大きさくらいに。帯はドラッグでも動きます。細かい位置は上のボタンで詰められます。</p>
     </div>
   </div>
 
@@ -242,34 +250,26 @@
       <div class="slider"><span>帯の外を隠す</span><input type="range" id="obMaskOp" min="0" max="1" step="0.05" value="0.75"><span class="v"><b id="obMaskOpv">75%</b></span></div>
       <div class="slider"><span>中央の線</span><input type="range" id="obLineOp" min="0" max="1" step="0.05" value="0.5"><span class="v"><b id="obLineOpv">50%</b></span></div>
       <div class="slider"><span>帯の塗り</span><input type="range" id="obBandOp" min="0" max="0.6" step="0.02" value="0"><span class="v"><b id="obBandOpv">0%</b></span></div>
-      <p class="mut small" style="margin:0">合ってきたら外を濃くして、もう一度。<br>
-        帯の<b>ふち</b>の線は「帯の外を隠す」で出ています。中央の線とは別ものです。</p>
+      <p class="mut small" style="margin:0">合ってきたら外を濃くして、もう一度。</p>
     </div>
   </div>
 
   <div class="subcard">
-    <h3>3. Δt ずつ進めて確かめる</h3>
+    <h3>3. Δt ずつ進める</h3>
     <div class="row"><span class="small">Δt ＝</span><select id="obDtSel"></select>
       <span class="big" id="obDtRead">—</span></div>
     <p class="mut small" style="margin:6px 0 0" id="obGridSrc"></p>
-    <details><summary>なぜ Δt で測るのか</summary><div class="db">
-      「1コマ」は端末によって 1/30 秒だったり 1/240 秒だったりします。そこで観察の単位には
-      <b>Δt ＝ 何コマ分</b>という時間を使い、コマ数と秒の両方を表示しています。
-      等速かどうかの判定は fps に関係しません。fps が効くのは「Δt が何秒か」を数値で言うときだけです。
-    </div></details>
-    <div class="row" style="margin-top:10px">
-      <button class="btn warn" id="obGrid" disabled>縦線を出す</button>
-      <button class="btn sm" id="obPred" disabled>等速ならここ</button>
-    </div>
-    <div class="grid2" style="margin-top:8px">
+    <div class="steprow">
+      <button class="btn sm" id="obHome3">⏮ 先頭</button>
       <button class="btn" id="obDtPrev">◀ Δt もどる</button>
       <button class="btn" id="obDtNext">Δt すすむ ▶</button>
     </div>
-    <p class="mut small" style="margin:8px 0 0">Δt ごとに、線を1本ずつ通りますか。</p>
+    <p class="mut small" style="margin:8px 0 0">ボールは帯の中にとどまり続けますか。</p>
   </div>
 
   <div class="subcard">
-    <h3>4. ストロボにする</h3>
+    <h3>4. 2. をストロボにする</h3>
+    <p class="mut small" style="margin:0 0 8px">動くカメラから見たまま、通り過ぎた位置を1つずつ残していきます。</p>
     <div class="row">
       <button class="btn warn" id="obStrobe">ストロボにする</button>
       <div class="seg sm hidden" id="obSbSeg">
@@ -277,8 +277,11 @@
       </div>
     </div>
     <div id="obSbRow" class="hidden">
-      <p class="mut small" style="margin:8px 0 0"><b>「Δt すすむ」で1つずつ増え、「Δt もどる」で1つ消えます。</b>
-        押す前に「次はどこに出ると思う？」と聞いてみてください。</p>
+      <div class="steprow">
+        <button class="btn sm" id="obSbHome">はじめから</button>
+        <button class="btn" id="obDtPrev2">◀ Δt もどる</button>
+        <button class="btn" id="obDtNext2">Δt すすむ ▶</button>
+      </div>
       <div class="row" style="margin-top:8px">
         <button class="btn sm" id="obSbAdd">今の位置を足す</button>
         <button class="btn sm" id="obSbUndo">1つ消す</button>
@@ -287,47 +290,44 @@
         <span class="big" id="obSbCount">0 個</span>
       </div>
       <p class="mut small" style="margin:8px 0 0">球が背景より<b>明るい</b>か<b>暗い</b>かで切り替えます。合わないほうを選ぶと球が残りません。</p>
+      <div class="row" style="margin-top:12px"><span class="small">カメラの速さを詰める</span>
+        <span class="mut small">いま <b id="obSbVx">0.000</b> 画面幅/秒</span></div>
+      <div class="grid6">
+        <button class="btn sm" data-camv="-0.01">−0.01</button>
+        <button class="btn sm" data-camv="-0.005">−0.005</button>
+        <button class="btn sm" data-camv="-0.001">−0.001</button>
+        <button class="btn sm" data-camv="0.001">＋0.001</button>
+        <button class="btn sm" data-camv="0.005">＋0.005</button>
+        <button class="btn sm" data-camv="0.01">＋0.01</button>
+      </div>
+      <p class="mut small" style="margin:8px 0 0"><b>2</b> の「帯に収まるか」より、球が<b>一直線に並ぶか</b>のほうが細かいずれまで見えます。</p>
+      <div class="note good small" style="margin-top:12px">
+        動くカメラから見ると、こう見えました。もとの映像に戻したとき、これは何を意味するでしょう。
+        <div class="row" style="margin-top:8px">
+          <button class="btn sm warn" id="obSbToAll">映像全体のストロボを見る →</button>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="subcard">
-    <h3>5. ずらして重ねる</h3>
-    <p class="mut small" style="margin:0 0 8px">いま作ったストロボ写真を、<b>時間に比例して横にずらして</b>重ね直します。
-      撮り直しはしません。同じコマの、重ね方だけを変えます。</p>
-    <div class="row">
-      <button class="btn warn" id="obShift" disabled>ずらして重ねる</button>
-      <span class="mut small" id="obShiftHint">先に <b>4</b> の「ストロボにする」で球をいくつか置いてください。</span>
+    <h3>5. 映像全体のストロボ</h3>
+    <p class="mut small" style="margin:0 0 8px" id="obSbViewHint">先に <b>4</b> の「ストロボにする」で球をいくつか置いてください。</p>
+    <div class="seg sm hidden" id="obSbViewSeg">
+      <button data-sbv="cam" class="on">カメラから見る</button><button data-sbv="all">映像全体</button><button data-sbv="both">並べる</button>
     </div>
-    <div id="obShiftRow" class="hidden">
-      <div class="slider"><span>ずらす速さ</span>
-        <input type="range" id="obShiftV" min="-1.5" max="1.5" step="0.005" value="0">
-        <input type="number" id="obShiftVnum" class="numin" step="0.001" value="0.000"></div>
-      <div class="grid6">
-        <button class="btn sm" data-shiftv="-0.05">−0.05</button>
-        <button class="btn sm" data-shiftv="-0.005">−0.005</button>
-        <button class="btn sm" data-shiftv="-0.001">−0.001</button>
-        <button class="btn sm" data-shiftv="0.001">＋0.001</button>
-        <button class="btn sm" data-shiftv="0.005">＋0.005</button>
-        <button class="btn sm" data-shiftv="0.05">＋0.05</button>
+    <div id="obSbAllRow" class="hidden">
+      <div class="steprow">
+        <button class="btn sm" id="obSbHome2">はじめから</button>
+        <button class="btn" id="obDtPrev3">◀ Δt もどる</button>
+        <button class="btn" id="obDtNext3">Δt すすむ ▶</button>
       </div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn sm" id="obShiftZero">0 に戻す</button>
-        <button class="btn sm" id="obShiftFromCam">2 で測った速さを入れる</button>
-        <button class="btn sm" id="obShiftPng">画像で保存</button>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm" id="obGrid" disabled>縦線を出す</button>
+        <button class="btn sm" id="obPred" disabled>等速ならここ</button>
+        <button class="btn sm" id="obSbPng2">画像で保存</button>
       </div>
-      <p class="mut small" style="margin:8px 0 0" id="obShiftRead">—</p>
-      <p class="mut small" style="margin:8px 0 0">球が<b>縦一列</b>になる速さをさがしてください。
-        <b>1</b> で「ボールをタップ」してあれば、そろった球はその<b>青い線の上</b>に来ます（線はドラッグでも動きます）。
-        縦に並んだら、そのまま <b>6</b> の横線を出して間隔を数えます。</p>
-      <details><summary>これで何が言えるのか</summary><div class="db">
-        ずらす量は<b>時間に比例</b>させています（Δt ごとに同じだけ）。ですから
-        「同じだけずつずらすと縦一列になる」ことと「水平方向が等速である」ことは、同じことを言っています。<br>
-        球を置いていく作業そのものは、ずらしとは関係なく素のまま行われています。
-        あとから重ね方だけを変えているので、<b>並んだのはアプリがそう並べたから</b>にはなりません。<br>
-        先に速さを測らず、<b>縦に並ぶまで動かして速さを探す</b>順番でもかまいません。
-        そうして見つけた値と、<b>2</b> で最初と最後の2点から測った値が一致します。
-      </div></details>
-      <p class="mut small" style="margin:8px 0 0">ずらしているあいだ、<b>縦線</b>と「等速ならここ」は消えます（ずらした画では意味が変わるため）。</p>
+      <p class="mut small" style="margin:8px 0 0">縦線の間隔は <b>カメラの速さ × Δt</b>。Δt ごとに、線を1本ずつ通りますか。</p>
     </div>
   </div>
 
@@ -340,17 +340,6 @@
     <p class="mut small" style="margin:8px 0 0" id="obHLRead">—</p>
     <p class="mut small" style="margin:8px 0 0">オレンジの線を<b>最高点の高さ</b>に、その次の線を<b>Δt あとの高さ</b>に合わせます。
       その先の線はドラッグできません。<b>「等加速度ならここ」という予測</b>だからです。</p>
-    <p class="mut small" style="margin:8px 0 0">右の数字は<b>線の位置</b>（最高点からの落下距離）で <b>0, 1, 4, 9, 16, 25</b>。
-      そのすぐ左の目盛りは<b>1単位ずつ</b>刻んであり、長い刻みが5つおきです。
-      上から数えれば位置が、<b>線と線のあいだを数えれば 1, 3, 5, 7, 9</b> が出ます。</p>
-    <details><summary>位置は 1, 4, 9, 16／あいだは 1, 3, 5, 7</summary><div class="db">
-      最高点からの落下距離は、Δt を1つの単位として <b>1, 4, 9, 16 …（＝ k²）</b>に比例します。これが線の位置です。<br>
-      そこから <b>となりあう線のあいだの距離</b>を引き算すると
-      4−1＝3、9−4＝5、16−9＝7 となって、<b>1, 3, 5, 7 …</b> という奇数が出てきます。
-      （k² − (k−1)² ＝ 2k−1 なので、必ず奇数になります。）<br>
-      間隔がどんどん広がることは目で見てわかりますが、その広がり方が<b>数えられる整数</b>になっているところが大事です。
-      水平方向が 1, 1, 1, 1 … の等間隔なのと見くらべてください。
-    </div></details>
   </div>
 </div>
 
@@ -379,7 +368,7 @@
       <button class="btn sm" data-miradj="0">0にもどす</button>
       <span class="big" id="obMirAdjV">±0 コマ</span>
     </div>
-    <p class="mut small" style="margin:8px 0 0">コマ送りは上りと下りが同時に動くので、ふたつのずれは2コマずつ変わります。ここは<b>逆再生側だけ</b>を1コマ動かします。</p>
+    <p class="mut small" style="margin:8px 0 0"><b>逆再生側だけ</b>を1コマ動かします。</p>
   </div>
 
   <div class="subcard">
@@ -400,8 +389,6 @@
   <h3>だから、次はこう考えられます</h3>
   <p>最高点では鉛直方向の速さが 0 です。そこから先の落ち方は、<b>その高さで静かに手をはなした自由落下</b>と同じはず。
     水平方向は等速のままなので、横に動いているだけ。これが<b>水平投射</b>です。</p>
-  <div class="note good small" style="margin-bottom:10px">
-    この動画と最高点を、そのまま②の「右・斜方投射」に引き継げます。開始点（最高点）も設定済みの状態で始められます。</div>
   <div class="row">
     <button class="btn big primary" id="obHandoff">② に引き継いでくらべる →</button>
     <button class="btn" id="obSave">観察の設定を書き出す</button>
@@ -487,7 +474,7 @@
     <label><input type="checkbox" id="cmDragMove"> 映像を直接ドラッグして上下に動かす</label>
     <button class="btn sm" id="cmResetY">上下位置をリセット</button>
   </div>
-  <p class="mut small" style="margin-bottom:0">そろえたあと「表示」タブで目盛りを出すと、開始点から 1 : 4 : 9 : 16 の位置に両方の物体が同時に来ることを確かめられます。</p>
+  <p class="mut small" style="margin-bottom:0">そろえたあと「表示」タブで目盛りを出すと、左右の落ち方を同じものさしで読めます。</p>
 </div>
 
 <div class="tabpane hidden" data-pane="compare:view">
@@ -510,11 +497,10 @@
     <button class="btn sm" id="cmGuideAdd">＋ 線を追加</button>
     <button class="btn sm" id="cmGuideClear">全部消す</button>
     <span class="mut small">線は上下にドラッグできます（最大3本）</span></div>
-  <h3>落下距離の目盛り（1 : 4 : 9 : 16）</h3>
+  <h3>落下距離の目盛り</h3>
   <div class="row">
     <button class="btn" id="cmRulerToggle">目盛りを表示</button>
     <span class="mut small">「0」の線を物体の位置に合わせ、「1」の線をドラッグして間隔を決めます</span></div>
-  <p class="mut small" style="margin-bottom:0">授業では「予想 → 再生 → 確認」の順に。まず何も出さずに予想させ、再生してから目盛りを重ねると効果的です。</p>
 </div>
 
 <div class="tabpane hidden" data-pane="compare:strobe">
@@ -541,8 +527,7 @@
       </div>
     </div>
     <div id="cmSbRow" class="hidden">
-      <p class="mut small" style="margin:8px 0 0"><b>「Δt すすむ」で左右に1つずつ増え、「Δt もどる」で1つ消えます。</b>
-        押す前に「次はどこに出ると思う？」と聞いてみてください。</p>
+      <p class="mut small" style="margin:8px 0 0"><b>「Δt すすむ」で左右に1つずつ増え、「Δt もどる」で1つ消えます。</b></p>
       <div class="grid2" style="margin-top:8px">
         <button class="btn" id="cmDtPrev">◀ Δt もどる</button>
         <button class="btn" id="cmDtNext">Δt すすむ ▶</button>
@@ -565,8 +550,8 @@
       <span class="mut small">左右の同じ高さに引かれます。「0」の線を物体の位置に、「1」の線をドラッグして間隔を決めます</span>
     </div>
     <p class="mut small" style="margin:8px 0 0" id="cmSbRead">—</p>
-    <p class="mut small" style="margin:8px 0 0">「そろえる」で高さを合わせてあれば、左右の球は毎回<b>同じ線の上</b>に並ぶはずです。
-      ずれていく場合は、大きさ（「調整」タブ）か開始点のどちらかが合っていません。</p>
+    <p class="mut small" style="margin:8px 0 0">左右の球が同じ線の上に来るか、1つずつ確かめてください。
+      そろわないときは、大きさ（「調整」タブ）か開始点を見直します。</p>
   </div>
 </div>
 

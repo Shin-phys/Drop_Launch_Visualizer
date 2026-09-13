@@ -17,8 +17,9 @@ var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,sMark:0,arm:0,
      shotS はそれぞれを撮った時刻（開始から何秒）。ずらして重ねるときに使う。
      sbGen は中身が変わるたびに増やす番号（ずらした板を作り直す判断に使う）。 */
   strobeOn:false,sbMode:'light',shots:[],shotS:[],sbGen:0,
-  /* ずらして重ねる：溜めた写真を時間に比例して横にずらし、水平の動きを打ち消す */
-  shiftOn:false,sv:0,camPicked:false,
+  /* ストロボの見え方。cam＝動くカメラから見る（時間に比例して横にずらす）、
+     all＝映像全体（ずらさない）、both＝左右に並べる。ずらす量はカメラの速さそのもの。 */
+  sbView:'cam',camPicked:false,
   /* 横線（最高点からの落下距離 1,4,9,16… ＝ 間隔が 1:3:5:7…） */
   showHL:false,hlY0:0.18,hlU:0.035};
 A.O=O;
@@ -152,6 +153,12 @@ A.observeSyncGrid=syncGridButtons;
 $('#obGrid').addEventListener('click',function(){
   O.showGrid=!O.showGrid; if(O.showGrid)O.camOn=false; syncHButtons(); A.syncPanels(); setStage();
 });
+/* 帯（中央の線・青い帯・外を隠す）を出すか。
+   カメラを動かしているときと、ストロボを「カメラから見る」で見ているとき。 */
+function gp2(){return (O.strobeOn&&O.sbView==='both')?P2():P1();}
+function bandOn(){
+  return A.S.tab==='h'&&!paused()&&(O.camOn||(O.strobeOn&&O.sbView!=='all'));
+}
 $('#obPred').addEventListener('click',function(){O.showPred=!O.showPred;syncHButtons();paint();});
 $('#obCam').addEventListener('click',function(){
   O.camOn=!O.camOn;
@@ -168,6 +175,10 @@ function setCamX(x,fromSlider){
 }
 A.observeSetCamX=setCamX;
 $('#obCamX').addEventListener('input',function(){setCamX(parseFloat(this.value),true);});
+/* 小さいボールだとスライダーでは中央の線が合わない。ボタンで詰められるようにする。 */
+$$('[data-camdx]').forEach(function(b){
+  A.attachRepeat(b,function(){setCamX(O.camX+parseFloat(b.getAttribute('data-camdx')));});
+});
 $('#obCamPick').addEventListener('click',function(){O.arm=4;armUI();});
 /* =========================================================
    ストロボ
@@ -237,11 +248,16 @@ function syncSbCount(){
 }
 /* 毎コマ描く。生の映像を下地にして、過去ぶんの板を明暗くらべで載せるだけ。 */
 function drawStrobe(){
-  var p=P1(), v=p.video;
-  var on=O.strobeOn&&A.S.tab==='h'&&v.videoWidth>0;
-  if(!on){ if(p.sc)A.show(p.sc,false); return; }
+  var on=O.strobeOn&&A.S.tab==='h'&&P1().video.videoWidth>0;
+  if(!on){ ['O1','O2'].forEach(function(id){var q=A.P(id); if(q.sc)A.show(q.sc,false);}); return; }
+  drawStrobeOne(P1(),shiftActive('O1'));
+  if(O.sbView==='both'&&P2().video.videoWidth>0)drawStrobeOne(P2(),false);
+  else if(P2().sc)A.show(P2().sc,false);
+}
+function drawStrobeOne(p,shifted){
+  var v=p.video;
   var c=A.strobeCv(p), g=c.getContext('2d');
-  if(shiftActive()){
+  if(shifted){
     /* 下地を「合成の効かない側」で塗ってから、ずらした板といまのコマを明暗くらべで載せる。
        毎回ここから描き直すので、前のコマの絵が残ることがない。
        いまのコマは <video> のままではなく板に写してから重ねる（上の liveCv を参照）。 */
@@ -267,11 +283,15 @@ function drawStrobe(){
 function setStrobe(on){
   if(O.strobeOn===on)return;
   O.strobeOn=on;
-  if(!on)O.shiftOn=false;
   clearShots();
-  if(on&&O.camOn){O.camOn=false;O.sbs=false;}   /* 追いかけカメラとは同時に使えない */
-  if(!on&&P1().sc)A.show(P1().sc,false);
-  syncHButtons(); A.syncPanels(); setStage();
+  if(on){
+    /* 2 の見え方をそのまま引き継ぐ。映像のパンは止めるが、帯は出したままにする。
+       （合成画が映像を覆うので、映像そのものを動かす必要はない） */
+    O.sbView='cam'; O.showGrid=false;
+    if(O.camOn){O.camOn=false;O.sbs=false;}
+  }
+  if(!on){['O1','O2'].forEach(function(id){var q=A.P(id); if(q.sc)A.show(q.sc,false);});}
+  syncGridButtons(); syncHButtons(); A.syncPanels(); setStage();
 }
 $('#obStrobe').addEventListener('click',function(){setStrobe(!O.strobeOn);});
 $('#obSbSeg').addEventListener('click',function(e){
@@ -314,8 +334,10 @@ function stepDt(n){
   A.S.s=clamp(A.S.s+n*dtSec(),0,mode.sMax());
   if(O.strobeOn&&n<0&&A.S.s!==s0)popShot();
 }
-A.attachRepeat($('#obDtNext'),function(){stepDt(1);});
-A.attachRepeat($('#obDtPrev'),function(){stepDt(-1);});
+['','2','3'].forEach(function(s){
+  A.attachRepeat($('#obDtNext'+s),function(){stepDt(1);});
+  A.attachRepeat($('#obDtPrev'+s),function(){stepDt(-1);});
+});
 
 /* ---------- 横線（最高点からの落下距離） ----------
    k = 0,1,4,9,16,25 の位置に引くと、となりあう間隔が 1,3,5,7,9 の奇数列になる。
@@ -330,9 +352,9 @@ function hlPos(kk){return (kk===0)?'0（最高点）':String(kk);}
 function syncHL(){
   var e=$('#obHLRead'); if(!e)return;
   e.innerHTML=O.showHL
-    ? ('右の数字は線の位置で <b>0, 1, 4, 9, 16, 25</b>（＝ k²）。'+
-       '目盛りを線と線のあいだで数えると <b>1 : 3 : 5 : 7 : 9</b>。Δt ＝ '+f3(dtSec())+' 秒 ＝ '+O.dtF+' コマ。')
-    : '最高点を 0 として、Δt ごとの落下距離が 1, 4, 9, 16 … になるかを見ます。';
+    ? ('右の数字は<b>線の位置</b>、そのすぐ左の目盛りは<b>1単位ずつ</b>（長い刻みが5つおき）。'+
+       '線と線の<b>あいだ</b>を数えてみてください。Δt ＝ '+f3(dtSec())+' 秒 ＝ '+O.dtF+' コマ。')
+    : '最高点を 0 として、Δt ごとにどれだけ落ちるかを見ます。';
 }
 $('#obHL').addEventListener('click',function(){
   O.showHL=!O.showHL; syncHButtons(); syncHL(); paint();
@@ -358,7 +380,13 @@ $('#obHLApex').addEventListener('click',function(){
      蓄積そのものは追いかけカメラと無関係に素のまま行われているので、
      速さを先に測らず「縦に並ぶまで動かして探す」順序にもできる。
    ========================================================= */
-function shiftActive(){return O.strobeOn&&O.shiftOn&&A.S.tab==='h';}
+/* この板をずらして描くか。並べるときは右（O2）だけ映像全体にする。 */
+function shiftActive(pid){
+  if(!(O.strobeOn&&A.S.tab==='h'))return false;
+  if(O.sbView==='all')return false;
+  if(O.sbView==='both'&&pid==='O2')return false;
+  return true;
+}
 /* ずらしの基準にする時刻。
    「ボールをタップ」で位置を取ってあれば、そのコマを基準にする。
    そうすると、そろった球の列がちょうど「そろえる線」の上に来る。
@@ -370,7 +398,7 @@ function shiftT0(){
 /* 時刻 t のコマを、どれだけ横にずらすか（映像の画素） */
 function shiftPx(t){
   var w=P1().video.videoWidth||0;
-  return -O.sv*(t-shiftT0())*w;
+  return -O.vx*(t-shiftT0())*w;
 }
 /* いまのコマを写しておく板。
    iOS Safari は <video> を合成モード付きで描くと、モードを無視して上書きしてしまう。
@@ -400,7 +428,7 @@ function strailCv(){
    毎コマ作り直すと、溜めた枚数ぶん重くなってしまう。 */
 function syncShiftTrail(){
   var c=strailCv();
-  var key=O.shots.length+'|'+O.sbGen+'|'+O.sv+'|'+O.sbMode+'|'+c.width+'|'+shiftT0();
+  var key=O.shots.length+'|'+O.sbGen+'|'+O.vx+'|'+O.sbMode+'|'+c.width+'|'+shiftT0();
   if(key===strailKey)return;
   strailKey=key;
   var g=c.getContext('2d');
@@ -413,54 +441,43 @@ function syncShiftTrail(){
   for(var i=0;i<O.shots.length;i++)g.drawImage(O.shots[i],shiftPx(O.shotS[i]),0);
   g.globalCompositeOperation='source-over';
 }
-function setShiftV(v,from){
-  if(!isFinite(v))return;
-  var sl=$('#obShiftV'), lim=parseFloat(sl.max);
-  O.sv=clamp(Math.round(v*1000)/1000,-lim,lim);
-  if(from!=='slider')sl.value=String(O.sv);
-  if(from!=='num')$('#obShiftVnum').value=O.sv.toFixed(3);
-  syncShiftRead(); place();
+function goHome(clear){
+  A.setPlaying(false); A.S.s=0;
+  if(clear)clearShots();
+  place();
 }
-A.observeSetShiftV=setShiftV;
-function syncShiftRead(){
-  var e=$('#obShiftRead'); if(!e)return;
-  var t='ずらす速さ <b>'+O.sv.toFixed(3)+'</b> 画面幅/秒'+
-        '（Δt のあいだに 画面幅の '+(Math.abs(O.sv*dtSec())*100).toFixed(1)+' %）';
-  if(Math.abs(O.vx)>0.0005){
-    var d=O.sv-O.vx;
-    t+='<br><b>2</b> で測った速さは <b>'+O.vx.toFixed(3)+'</b>。差は '+
-       (d>=0?'＋':'−')+Math.abs(d).toFixed(3)+
-       '（'+(d>=0?'＋':'−')+Math.abs(d/O.vx*100).toFixed(1)+' %）';
-  }
-  e.innerHTML=t;
+$('#obHome3').addEventListener('click',function(){goHome(false);});
+/* ストロボ中は「溜めた数」と「再生位置」が結びついている。位置だけ戻すと数がずれるので、
+   ストロボのカードでは溜めたものごと捨ててやり直す。 */
+$('#obSbHome').addEventListener('click',function(){goHome(true);});
+$('#obSbHome2').addEventListener('click',function(){goHome(true);});
+
+function setSbView(v){
+  O.sbView=v;
+  O.showGrid=(v!=='cam');
+  strailKey='';
+  syncGridButtons(); syncHButtons(); A.syncPanels(); setStage();
 }
-function syncShiftBtns(){
-  var b=$('#obShift'); if(!b)return;
-  b.classList.toggle('ok',O.shiftOn);
-  b.textContent=O.shiftOn?'ずらすのをやめる':'ずらして重ねる';
-  b.disabled=!O.strobeOn;
-  A.show('#obShiftRow',O.strobeOn&&O.shiftOn);
-  A.show('#obShiftHint',!O.strobeOn);
-  syncShiftRead();
+$('#obSbViewSeg').addEventListener('click',function(e){
+  var b=e.target.closest('button'); if(!b)return;
+  setSbView(b.getAttribute('data-sbv'));
+});
+$('#obSbToAll').addEventListener('click',function(){
+  setSbView('all');
+  A.toast('溜めた球はそのままです。同じ球が、映像全体ではどこに並ぶでしょう。',5000);
+});
+function syncSbViewBtns(){
+  var seg=$('#obSbViewSeg'); if(!seg)return;
+  $$('#obSbViewSeg button').forEach(function(b){
+    b.classList.toggle('on',b.getAttribute('data-sbv')===O.sbView);
+  });
+  A.show('#obSbViewSeg',O.strobeOn);
+  A.show('#obSbViewHint',!O.strobeOn);
+  A.show('#obSbAllRow',O.strobeOn);
+  var e=$('#obSbVx'); if(e)e.textContent=O.vx.toFixed(3);
 }
-$('#obShift').addEventListener('click',function(){
-  if(!O.strobeOn){A.toast('先に「ストロボにする」で球をいくつか置いてください。');return;}
-  O.shiftOn=!O.shiftOn; strailKey='';
-  syncShiftBtns(); paint();
-});
-$('#obShiftV').addEventListener('input',function(){setShiftV(parseFloat(this.value),'slider');});
-$('#obShiftVnum').addEventListener('input',function(){setShiftV(parseFloat(this.value),'num');});
-$('#obShiftVnum').addEventListener('change',function(){setShiftV(parseFloat(this.value));});
-$$('[data-shiftv]').forEach(function(b){
-  A.attachRepeat(b,function(){setShiftV(O.sv+parseFloat(b.getAttribute('data-shiftv')));});
-});
-$('#obShiftZero').addEventListener('click',function(){setShiftV(0);});
-$('#obShiftFromCam').addEventListener('click',function(){
-  if(Math.abs(O.vx)<0.0005){A.toast('先に 2 でカメラの速さを決めてください。');return;}
-  setShiftV(O.vx);
-  A.toast('測った速さ '+O.vx.toFixed(3)+' を入れました。');
-});
-$('#obShiftPng').addEventListener('click',exportPng);
+$('#obSbPng2').addEventListener('click',function(){exportPng();});
+
 
 /* ---------- 画像で保存 ----------
    線も一緒に焼き込む。ワークシートに貼ったときに、何を見た絵なのかが残るように。 */
@@ -524,14 +541,14 @@ function exportPng(){
       tag(hlPos(kk),W-u*6,y*H+(kk===0?-u*22:u*3),(kk===0)?'#ff9f43':'#ffcc4d',true);
     });
   }
-  tag((shiftActive()?('ずらす速さ ＝ '+O.sv.toFixed(3)+' 画面幅/秒　／　'):'')
+  tag((shiftActive()?('カメラの速さ ＝ '+O.vx.toFixed(3)+' 画面幅/秒　／　'):'')
       +'Δt ＝ '+O.dtF+' コマ ＝ '+f3(dtSec())+' 秒　／　'+O.shots.length+'＋1 コマ重ね',
       u*6,u*6,'#eef2f8',false);
   c.toBlob(function(bl){
     if(!bl){A.toast('画像を作れませんでした。');return;}
     var a=document.createElement('a');
     a.href=URL.createObjectURL(bl);
-    a.download=(shiftActive()?'strobe-zurashi-':'strobe-')+O.dtF+'koma.png';
+    a.download=(shiftActive()?'strobe-camera-':'strobe-zentai-')+O.dtF+'koma.png';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
     A.toast('画像を保存しました。');
@@ -570,11 +587,12 @@ function syncHButtons(){
   $('#obStrobe').textContent=O.strobeOn?'ストロボをやめる':'ストロボにする';
   A.show('#obSbSeg',O.strobeOn);
   A.show('#obSbRow',O.strobeOn);
-  syncShiftBtns();
+  syncSbViewBtns();
   $('#obHL').classList.toggle('ok',O.showHL);
   $('#obHL').textContent=O.showHL?'横線を消す':'横線を出す';
-  A.show('#obBandRow',O.camOn);
-  if(!O.camOn)A.show('#obMaskRow',false);
+  var band=O.camOn||(O.strobeOn&&O.sbView!=='all');
+  A.show('#obBandRow',band);
+  if(!band)A.show('#obMaskRow',false);
   syncSbCount();
 }
 /* 速さの指定は3通り（スライダー・数値・ボタン）。どれで変えても表示をそろえる。
@@ -586,7 +604,9 @@ function setVx(v,from){
   if(from!=='slider')cv.value=String(O.vx);
   if(from!=='num')$('#obCamVnum').value=O.vx.toFixed(3);
   syncGridButtons();
-  place();
+  var e=$('#obSbVx'); if(e)e.textContent=O.vx.toFixed(3);
+  /* 縦線の間隔は速さで決まるので、出ているときは引き直す */
+  if(O.showGrid)paint(); else place();
 }
 A.observeSetVx=setVx;
 $('#obCamV').addEventListener('input',function(){setVx(parseFloat(this.value),'slider');});
@@ -630,35 +650,38 @@ $('#obHG').addEventListener('click',function(){
 /* ---------- 描画 ---------- */
 function setStage(){
   var st=$('#stage'), tab=A.S.tab;
-  var two=(tab==='v')||(tab==='h'&&O.camOn&&O.sbs);
+  var two=(tab==='v')||(tab==='h'&&((O.camOn&&O.sbs)||(O.strobeOn&&O.sbView==='both')));
   st.className='stage '+(tab==='v'?(O.mir==='over'?'over':'side'):(two?'side':'one'));
   st.style.setProperty('--ovop',String(O.ovop));
   A.syncPanels();
   document.querySelector('.panel[data-side="O2"]').classList.toggle('dim',tab==='v'&&O.mir==='over');
+  var sbBoth=(tab==='h'&&O.strobeOn&&O.sbView==='both');
   document.querySelector('[data-chip="O1"]').textContent=
-    (tab==='v')?'下り（+t）':(two?'追いかけカメラ':'映像');
+    (tab==='v')?'下り（+t）':(sbBoth?'カメラから見る':(two?'追いかけカメラ':'映像'));
   document.querySelector('[data-chip="O2"]').textContent=
-    (tab==='v')?'逆再生（上り）':'もとの映像';
+    (tab==='v')?'逆再生（上り）':(sbBoth?'映像全体':'もとの映像');
   paint();
 }
 function paint(){
   ['O1','O2'].forEach(function(id){A.ov.clear(A.P(id));});
   var tab=A.S.tab, p1=P1();
   if(tab==='h'){
-    if(O.showGrid&&!shiftActive()){
+    if(O.showGrid&&!shiftActive(O.sbView==='both'?'O2':'O1')){
       var gb=gridBase(), d=gb.d;
+      /* 並べているときは、縦線は右（映像全体）のほうに引く */
+      var gp=(O.strobeOn&&O.sbView==='both')?P2():p1;
       if(Math.abs(d)>0.004){
         var a=Math.ceil((0-gb.x0)/d), b=Math.floor((1-gb.x0)/d);
         if(a>b){var t=a;a=b;b=t;}
         a=Math.max(a,-60); b=Math.min(b,60);
         for(var k=a;k<=b;k++){
           var x=gb.x0+k*d; if(x<0||x>1)continue;
-          var el=A.ov.el(p1,'vline'+(k===0?' k0':''),k===0?'①':(k===1?'Δt':null));
+          var el=A.ov.el(gp,'vline'+(k===0?' k0':''),k===0?'①':(k===1?'Δt':null));
           el.style.left=(x*100)+'%';
         }
       }
     }
-    if(O.camOn){
+    if(bandOn()){
       /* 基準の縦線。測定前でも出し、ドラッグしてボールに合わせられるようにする */
       var cl=A.ov.el(p1,'vline cam');
       cl.addEventListener('pointerdown',function(ev){
@@ -668,14 +691,8 @@ function paint(){
       A.ov.el(p1,'band');
       /* 背景を隠す縦帯。動く背景が視界から外れると、ボールの動きが鉛直だけに見える */
       if(O.maskOn&&!paused()){A.ov.el(p1,'mask ml');A.ov.el(p1,'mask mr');}
-    }else if(shiftActive()){
-      /* ずらしたときの目じるし。縦に並んだかどうかは、線が1本あるほうが読みやすい。 */
-      var sl=A.ov.el(p1,'vline cam','そろえる線');
-      sl.addEventListener('pointerdown',function(ev){
-        A.dragX(ev,p1.vp,function(x){setCamX(x);});
-      });
     }
-    if(O.showPred&&!shiftActive())A.ov.el(p1,'tri');
+    if(O.showPred&&!shiftActive())A.ov.el(gp2(),'tri');
     if(O.showHL){
       /* 右の数字のすぐ左に、最高点から下へ1本だけ通した目盛り。
          数字だけでは根拠が見えないので、1単位ずつ刻んで数えられるようにする。 */
@@ -746,21 +763,21 @@ function place(){
   var c=O.camX, w=O.maskW;
   var cline=P1().ovl.querySelector('.cam');
   if(cline){cline.style.left=(c*100)+'%';
-    cline.style.opacity=String(shiftActive()?0.95:O.lineOp);}
+    cline.style.opacity=String((O.strobeOn&&O.sbView!=='all')?0.95:O.lineOp);}
   var band=P1().ovl.querySelector('.band');
   if(band){
     band.style.left=(Math.max(0,c-w/2)*100)+'%';
     band.style.width=(Math.min(1,c+w/2)-Math.max(0,c-w/2))*100+'%';
     band.style.background='rgba(77,163,255,'+O.bandOp+')';
   }
-  if(cam&&O.maskOn){
+  if(bandOn()&&O.maskOn){
     var o=String(O.maskOp);
     var l=P1().ovl.querySelector('.ml'), r=P1().ovl.querySelector('.mr');
     if(l){l.style.left='0';l.style.width=(Math.max(0,c-w/2)*100)+'%';l.style.background='rgba(0,0,0,'+o+')';}
     if(r){r.style.left=(Math.min(1,c+w/2)*100)+'%';r.style.right='0';r.style.background='rgba(0,0,0,'+o+')';}
   }
   if(A.S.tab==='h'){
-    var tri=P1().ovl.querySelector('.tri');
+    var tri=gp2().ovl.querySelector('.tri');
     if(tri){
       var gp=gridBase(), xp=gp.x0+gp.v*(A.S.s-O.sMark);
       tri.style.left=clamp(xp,0,1)*100+'%';
@@ -807,7 +824,7 @@ function place(){
 $('#obSave').addEventListener('click',function(){
   A.download('shaho-kansatsu.json',{app:'projectile-lab',part:'observe',version:2,
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
-    sMark:O.sMark,vx:O.vx,sv:O.sv,
+    sMark:O.sMark,vx:O.vx,
     apexX:O.apexX,hgY:O.hgY,rgY:O.rgY,mir:O.mir,flip:O.flip,ovop:O.ovop,mirAdj:O.mirAdj,
     camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,bandOp:O.bandOp,lineOp:O.lineOp,
     sbMode:O.sbMode,showHL:O.showHL,hlY0:O.hlY0,hlU:O.hlU,name:P1().name});
@@ -817,7 +834,7 @@ $('#obLoad').addEventListener('click',function(){A.pendingJson='observe';$('#jso
 A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
-  ['fStart','fApex','fEnd','sMark','vx','sv','apexX','hgY','rgY','mirAdj',
+  ['fStart','fApex','fEnd','sMark','vx','apexX','hgY','rgY','mirAdj',
    'camX','maskW','maskOp','bandOp','lineOp','hlY0','hlU'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
   if(d.sbMode==='light'||d.sbMode==='dark'){
@@ -835,7 +852,6 @@ A.observeLoadJson=function(d){
   $('#obBandOp').value=String(O.bandOp);$('#obBandOpv').textContent=Math.round(O.bandOp*100)+'%';
   $('#obLineOp').value=String(O.lineOp);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';
   $('#obCamV').value=String(O.vx);$('#obCamVnum').value=O.vx.toFixed(3);
-  $('#obShiftV').value=String(O.sv);$('#obShiftVnum').value=O.sv.toFixed(3);
   fillDt(); refreshRange(); syncHL(); syncRG();
   syncHButtons(); setStage();
   $('#obSaveMsg').textContent='読み込みました。動画は別途読み込んでください。';
@@ -852,6 +868,7 @@ var mode={
   activePanels:function(){
     if(A.S.tab==='v')return ['O1','O2'];
     if(A.S.tab==='h'&&O.camOn&&O.sbs)return ['O1','O2'];
+    if(A.S.tab==='h'&&O.strobeOn&&O.sbView==='both')return ['O1','O2'];
     return ['O1'];
   },
   allowNative:false,        /* 逆再生を含むので、必ずシークで同期する */
@@ -872,7 +889,10 @@ var mode={
     A.setPlaying(false); A.S.s=0; O.arm=0; A.show('#hintbar',false); armUI();
     /* タブを移ると先頭に戻るので、溜めた位置は前のタブの話になってしまう。持ち越さない。 */
     if(O.shots.length)clearShots();
-    if(id!=='h'&&O.strobeOn){O.strobeOn=false;O.shiftOn=false;if(P1().sc)A.show(P1().sc,false);}
+    if(id!=='h'&&O.strobeOn){
+      O.strobeOn=false; O.sbView='cam';
+      ['O1','O2'].forEach(function(k){var q=A.P(k); if(q.sc)A.show(q.sc,false);});
+    }
     if(id==='h'){
       if(!O.dtTouched&&ready3()){var nd=suggestDt(); if(nd!==O.dtF){O.dtF=nd;fillDt();}}
       /* 最初からカメラと背景隠しを効かせておく（探索から始める流れなので） */
@@ -907,6 +927,7 @@ var mode={
     if(pid==='O2'){
       if(A.S.tab==='v')return A.FT(O.fApex+O.mirAdj)-A.S.s;
       if(A.S.tab==='h'&&O.camOn&&O.sbs)return A.FT(O.fStart)+A.S.s;
+      if(A.S.tab==='h'&&O.strobeOn&&O.sbView==='both')return A.FT(O.fStart)+A.S.s;
     }
     return null;
   },

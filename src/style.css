@@ -396,3 +396,7 @@ body.compact #zoomHint{display:none}
 
 /* 画面が短い端末では映像を少し譲って、下の「次へ」まで画面に収める */
 @media(max-height:720px){body.compact .stage{height:32dvh}}
+
+/* 先頭・もどる・すすむ を一行に。先頭だけ幅を詰める */
+.steprow{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;margin-top:10px}
+@media (max-width:420px){ .steprow{grid-template-columns:1fr 1fr;} .steprow>:first-child{grid-column:1/-1} }
