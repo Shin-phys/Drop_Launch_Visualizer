@@ -9,7 +9,7 @@ var $=A.$, $$=A.$$, clamp=A.clamp, f3=A.f3;
 
 var O={dtF:2,dtTouched:false,fStart:null,fApex:null,fEnd:null,sMark:0,arm:0,
   showGrid:false,showPred:false,camOn:false,vx:0,
-  maskOn:false,maskW:0.06,maskOp:0.75,bandOp:0,lineOp:0.5,sbs:false,camX:0.5,
+  maskOn:false,maskW:0.06,maskOp:0.75,lineOp:0.5,lineOpPre:0.5,sbs:false,camX:0.5,
   mir:'side',flip:true,ovop:0.55,apexX:0.5,showHG:false,hgY:0.4,mirAdj:0,
   /* 高さの線（最高点さがし用。区間を決める画面でも使う） */
   showRG:false,rgY:0.35,
@@ -289,6 +289,11 @@ function setStrobe(on){
        （合成画が映像を覆うので、映像そのものを動かす必要はない） */
     O.sbView='cam'; O.showGrid=false;
     if(O.camOn){O.camOn=false;O.sbs=false;}
+    /* 溜まった球が線に隠れてしまうので、中央の線は薄くしておく。
+       手で変えられるように、決め打ちにはしない。 */
+    O.lineOpPre=O.lineOp; setLineOp(0.15);
+  }else{
+    setLineOp(O.lineOpPre);
   }
   if(!on){['O1','O2'].forEach(function(id){var q=A.P(id); if(q.sc)A.show(q.sc,false);});}
   syncGridButtons(); syncHButtons(); A.syncPanels(); setStage();
@@ -554,11 +559,14 @@ function exportPng(){
     A.toast('画像を保存しました。');
   },'image/png');
 }
+function setLineOp(v){
+  O.lineOp=clamp(v,0,1);
+  var s=$('#obLineOp'); if(s)s.value=String(O.lineOp);
+  var e=$('#obLineOpv'); if(e)e.textContent=Math.round(O.lineOp*100)+'%';
+  place();
+}
 $('#obLineOp').addEventListener('input',function(){
   O.lineOp=parseFloat(this.value);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';place();
-});
-$('#obBandOp').addEventListener('input',function(){
-  O.bandOp=parseFloat(this.value);$('#obBandOpv').textContent=Math.round(O.bandOp*100)+'%';place();
 });
 $('#obMask').addEventListener('click',function(){
   O.maskOn=!O.maskOn; A.show('#obMaskRow',O.maskOn); syncHButtons(); paint();
@@ -687,8 +695,6 @@ function paint(){
       cl.addEventListener('pointerdown',function(ev){
         A.dragX(ev,p1.vp,function(x){setCamX(x);});
       });
-      /* 帯そのもの（半透明の青）。濃さ 0 なら線だけになる */
-      A.ov.el(p1,'band');
       /* 背景を隠す縦帯。動く背景が視界から外れると、ボールの動きが鉛直だけに見える */
       if(O.maskOn&&!paused()){A.ov.el(p1,'mask ml');A.ov.el(p1,'mask mr');}
     }
@@ -762,14 +768,7 @@ function place(){
   }
   var c=O.camX, w=O.maskW;
   var cline=P1().ovl.querySelector('.cam');
-  if(cline){cline.style.left=(c*100)+'%';
-    cline.style.opacity=String((O.strobeOn&&O.sbView!=='all')?0.95:O.lineOp);}
-  var band=P1().ovl.querySelector('.band');
-  if(band){
-    band.style.left=(Math.max(0,c-w/2)*100)+'%';
-    band.style.width=(Math.min(1,c+w/2)-Math.max(0,c-w/2))*100+'%';
-    band.style.background='rgba(77,163,255,'+O.bandOp+')';
-  }
+  if(cline){cline.style.left=(c*100)+'%';cline.style.opacity=String(O.lineOp);}
   if(bandOn()&&O.maskOn){
     var o=String(O.maskOp);
     var l=P1().ovl.querySelector('.ml'), r=P1().ovl.querySelector('.mr');
@@ -826,7 +825,7 @@ $('#obSave').addEventListener('click',function(){
     fps:A.S.fps,dtF:O.dtF,fStart:O.fStart,fApex:O.fApex,fEnd:O.fEnd,
     sMark:O.sMark,vx:O.vx,
     apexX:O.apexX,hgY:O.hgY,rgY:O.rgY,mir:O.mir,flip:O.flip,ovop:O.ovop,mirAdj:O.mirAdj,
-    camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,bandOp:O.bandOp,lineOp:O.lineOp,
+    camX:O.camX,maskW:O.maskW,maskOp:O.maskOp,lineOp:O.lineOp,
     sbMode:O.sbMode,showHL:O.showHL,hlY0:O.hlY0,hlU:O.hlU,name:P1().name});
   $('#obSaveMsg').textContent='書き出しました（動画そのものは含まれません）。';
 });
@@ -835,7 +834,7 @@ A.observeLoadJson=function(d){
   if(d.fps){A.S.fps=d.fps;$('#fpsSel').value=String(d.fps);A.fpsHint();}
   if(d.dtF){O.dtF=d.dtF;O.dtTouched=true;}
   ['fStart','fApex','fEnd','sMark','vx','apexX','hgY','rgY','mirAdj',
-   'camX','maskW','maskOp','bandOp','lineOp','hlY0','hlU'].forEach(function(k){
+   'camX','maskW','maskOp','lineOp','hlY0','hlU'].forEach(function(k){
     if(d[k]!=null)O[k]=d[k];});
   if(d.sbMode==='light'||d.sbMode==='dark'){
     O.sbMode=d.sbMode;
@@ -849,7 +848,6 @@ A.observeLoadJson=function(d){
   $('#obCamX').value=String(O.camX);$('#obCamXv').textContent=Math.round(O.camX*100)+'%';
   $('#obMaskW').value=String(O.maskW);$('#obMaskWv').textContent=Math.round(O.maskW*100)+'%';
   $('#obMaskOp').value=String(O.maskOp);$('#obMaskOpv').textContent=Math.round(O.maskOp*100)+'%';
-  $('#obBandOp').value=String(O.bandOp);$('#obBandOpv').textContent=Math.round(O.bandOp*100)+'%';
   $('#obLineOp').value=String(O.lineOp);$('#obLineOpv').textContent=Math.round(O.lineOp*100)+'%';
   $('#obCamV').value=String(O.vx);$('#obCamVnum').value=O.vx.toFixed(3);
   fillDt(); refreshRange(); syncHL(); syncRG();
