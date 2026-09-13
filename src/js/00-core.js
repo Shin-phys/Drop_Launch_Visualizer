@@ -115,6 +115,7 @@ A.applyTransform = function(p,extraX,flipAboutX){
     p.sc.style.transformOrigin=p.video.style.transformOrigin;
     p.sc.style.transform=t;
     p.sc.style.objectPosition=p.video.style.objectPosition;
+    p.sc.style.objectFit=p.video.style.objectFit||'';
   }
 };
 
